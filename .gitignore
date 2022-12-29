@@ -1,2 +1,4 @@
-__pyache__
+__pyache__/
 venv
+*.pyc
+config.yaml
