@@ -33,14 +33,12 @@ async def connected_event(request: Request) -> dict:
     data = await request.json()
     logger.info(json.dumps(data, indent=2))
     if 'customAttributes' in data['InternalUser'].keys():
-        add_user_to_group(data['InternalUser']['name'],
-                          config['gp_users_group'],
+        res = update_user(data['InternalUser']['name'],
                           data['InternalUser']['customAttributes'])
     else:
-        add_user_to_group(data['InternalUser']['name'],
-                          config['gp_users_group'],
-                          {})
-    return data
+        res = update_user(data['InternalUser']['name'], {
+            'PaloAlto-GlobalProtect-Client-Version': "Unknown"})
+    return res.json()
 
 
 @app.post("/disconnected")
@@ -48,36 +46,27 @@ async def disconnected_event(request: Request) -> dict:
     data = await request.json()
     logger.info(json.dumps(data, indent=2))
     if 'customAttributes' in data['InternalUser'].keys():
-        del_group_from_user(data['InternalUser']['name'],
-                            config['gp_users_group'],
-                            data['InternalUser']['customAttributes'])
+        res = update_user(data['InternalUser']['name'],
+                          data['InternalUser']['customAttributes'])
     else:
-        del_group_from_user(data['InternalUser']['name'],
-                            config['gp_users_group'],
-                            {})
+        res = update_user(
+            data['InternalUser']['name'],
+            {
+                "PaloAlto-Client-Hostname": "",
+                "PaloAlto-Client-OS": "",
+                "PaloAlto-Client-Source-IP": "",
+                "PaloAlto-GlobalProtect-Client-Version": "N-A"
+            })
 
-    return data
+    return res.json()
 
 
-def add_user_to_group(user: str, group: str, custom_attributes: dict) -> bool:
+def update_user(user: str, custom_attributes: dict) -> bool:
     global ise_token
-    cisco_ise.ise_add_grp_to_user(
+    res = cisco_ise.ise_update_user(
         config['ise_api_ip'],
         ise_token,
         user,
-        group,
         custom_attributes
     )
-    return True
-
-
-def del_group_from_user(user: str, group: str, custom_attributes: dict) -> bool:
-    global ise_token
-    cisco_ise.ise_del_grp_from_user(
-        config['ise_api_ip'],
-        ise_token,
-        user,
-        group,
-        custom_attributes
-    )
-    return True
+    return res
