@@ -1,0 +1,8 @@
+---
+
+ise_api_ip: 192.0.0.22
+ise_api_port: 9060
+ise_credentials:
+  username: fyousuf
+  password: Fahad@123
+gp_users_group: asiacell_gp_connected_users
