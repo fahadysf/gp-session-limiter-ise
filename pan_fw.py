@@ -25,7 +25,7 @@ def fw_key(fw_ip, uname, pwd):
             logger.info(f"PAN-OS API: Connection Requested, Firewall {fw_ip}")
             response = requests.request(
                 "GET", url=api_url, params=api_prm, verify=False, timeout=3)
-        except:
+        except Exception:
             logger.error(
                 f"PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable")
             time.sleep(2)
@@ -50,7 +50,7 @@ def fw_gp_ext(fw_ip, fw_key):
             f"PAN-OS API: Request GP-Gateway Connected Users, Firewall {fw_ip}")
         response = requests.request(
             "GET", url=api_url, params=api_prm, verify=False, timeout=3)
-    except:
+    except Exception:
         logger.error(
             f"PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable")
         raise ValueError(

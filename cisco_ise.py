@@ -43,12 +43,14 @@ all_users = load_user_data()
 
 
 def ise_auth(uname, pwd):
-    logger.info(f"Calculating Cisco ISE API Basic Auth Token")
+    logger.info("Calculating Cisco ISE API Basic Auth Token")
     token = base64.b64encode(f"{uname}:{pwd}".encode('utf-8')).decode("ascii")
     return f"Basic {token}"
 
 
-def ise_api_call(ise_ip, ise_auth, path, method="GET", ise_port=9060, payload=None):
+def ise_api_call(ise_ip, ise_auth, path, method="GET",
+                 ise_port=9060,
+                 payload=None):
     """
     Construct and do ISE API Call
     """

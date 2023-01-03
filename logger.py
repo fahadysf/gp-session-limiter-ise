@@ -63,7 +63,7 @@ def init_logging():
     Replaces logging handlers with a handler for using the custom handler.
 
     WARNING!
-    if you call the init_logging in startup event function, 
+    if you call the init_logging in startup event function,
     then the first logs before the application start will be in the old format
 
     >>> app.add_event_handler("startup", init_logging)
