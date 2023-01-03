@@ -1,9 +1,10 @@
 #!/usr/bin/python3
-import datetime
 import base64
 import json
 import requests
 import time
+import pickle
+import os
 from logger import init_logging, logger
 
 import traceback
@@ -14,11 +15,31 @@ init_logging()
 requests.packages.urllib3.disable_warnings()
 
 # Globally cached lists (all_users, all_groups)
-all_users = dict()
-all_groups = dict()
 
-# def log4y(_):
-# return print(datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S") + " " + _)
+
+def load_user_data():
+    if os.path.isfile('data/users.pickle'):
+        try:
+            with open('data/users.pickle', 'rb') as fd:
+                all_users = pickle.load(fd)
+        except Exception:
+            os.remove("data/users.pickle")
+            raise
+    else:
+        all_users = {}
+    return all_users
+
+
+def save_user_data():
+    global all_users
+    try:
+        with open('data/users.pickle', 'wb') as fd:
+            pickle.dump(all_users, fd, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception:
+        raise
+
+
+all_users = load_user_data()
 
 
 def ise_auth(uname, pwd):
@@ -74,7 +95,6 @@ def ise_get_all_users(ise_ip, ise_auth):
         try:
             logger.info(f"Cisco ISE API: Request All ISE Users, ISE {ise_ip}")
             response = ise_api_call(ise_ip, ise_auth, api_path)
-
         except Exception as e:
             logger.error(
                 f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred")
@@ -108,10 +128,13 @@ def ise_get_user_details(ise_ip, ise_auth, user):
 def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
     global all_users
     try:
-        if username not in all_users:
+        if username in all_users:
+            logger.info(f"Cache Hit for user {username}")
+        else:
             all_users = ise_get_all_users(ise_ip, ise_auth)
         all_users[username] = ise_get_user_details(
             ise_ip, ise_auth, all_users[username])['InternalUser']
+        save_user_data()
         user = all_users[username]
     except Exception as e:
         logger.error(
@@ -169,7 +192,6 @@ def ise_update_user(ise_ip: str,
     """
     ISE: Update user and add custom attributes
     """
-    global all_groups
     # Enrich user details (if not already done) and get user
     u = ise_enrich_user(ise_ip, ise_auth, username)
     if u is None:
@@ -192,7 +214,7 @@ def ise_update_user(ise_ip: str,
                 f"API Payload: {json.dumps(json.loads(api_payload), indent=2)}")
             res = ise_api_call(ise_ip, ise_auth, api_path,
                                method="PUT", payload=api_payload)
-        except Exception as e:
+        except Exception:
             logger.error(
                 f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
             traceback.print_exc()
@@ -200,5 +222,5 @@ def ise_update_user(ise_ip: str,
             logger.debug(
                 f"Status Code: {res.status_code}, Response Body: {json.dumps(res.json(), indent=2)}")
             logger.info(
-                f"User {u['name']} upadted.")
+                f"User {u['name']} updated.")
             return res

@@ -1,5 +1,6 @@
 .vscode/
 __pyache__/
+data/
 venv
 *.pyc
 config.yaml

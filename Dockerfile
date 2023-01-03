@@ -13,12 +13,8 @@ RUN apt-get install -yqq net-tools
 RUN apt-get install -yqq nano
 
 
-#Install Python Packages
-RUN pip3 install requests
-RUN pip3 install xmltodict
-
-
-RUN echo 'root:root' |chpasswd
+# Set password and perform cleanup
+RUN echo 'root:root' | chpasswd
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -30,8 +26,8 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 VOLUME [ "/root" ]
 
 COPY *.py ./
-
-
 RUN chmod +x  *.py
+#Install Python Packages
+RUN pip3 install -r requirements.txt
 
 ENTRYPOINT ["./main.py"]

@@ -61,7 +61,7 @@ def format_record(record: dict) -> str:
 def init_logging():
     """
     Replaces logging handlers with a handler for using the custom handler.
-        
+
     WARNING!
     if you call the init_logging in startup event function, 
     then the first logs before the application start will be in the old format
@@ -73,7 +73,7 @@ def init_logging():
     INFO:     Started server process [6036]
     INFO:     Waiting for application startup.
     2020-07-25 02:19:21.357 | INFO     | uvicorn.lifespan.on:startup:34 - Application startup complete.
-    
+
     """
 
     # disable handlers for specific uvicorn loggers
@@ -93,5 +93,8 @@ def init_logging():
 
     # set logs output, level and format
     logger.configure(
-        handlers=[{"sink": sys.stdout, "level": logging.DEBUG, "format": format_record}]
+        handlers=[{"sink": sys.stdout,
+                   "level": logging.DEBUG,
+                   "format": format_record}
+                  ]
     )
