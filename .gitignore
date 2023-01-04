@@ -1,6 +1,6 @@
 .vscode/
 __pyache__/
-data/
+data/*
 venv
 *.pyc
 config.yaml
