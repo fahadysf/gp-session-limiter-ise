@@ -223,6 +223,8 @@ def ise_update_user(ise_ip: str,
                 f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
             traceback.print_exc()
         else:
+            all_users[u['name']]['customAttributes'] = custom_attributes
+            save_user_data()
             logger.debug(
                 f"Status Code: {res.status_code}, Response Body: {json.dumps(res.json(), indent=2)}")
             logger.info(
