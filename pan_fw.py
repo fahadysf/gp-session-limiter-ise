@@ -77,7 +77,13 @@ def fw_gp_ext(fw_ip, fw_key):
         else:
             logger.info(
                 f"PAN-OS API: NO Users Connected to GP-Gateway, Firewall {fw_ip}")
-        return gp_users
+        gp_connected_user_data = dict()
+        for entry in gp_users:
+            if entry['Username'] in gp_connected_user_data.keys():
+                gp_connected_user_data[entry['Username']].append(entry)
+            else:
+                gp_connected_user_data[entry['Username']] = [entry]
+        return gp_connected_user_data
 
 
 def fw_gp_lst(gp_ext):

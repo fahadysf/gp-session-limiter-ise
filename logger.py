@@ -58,7 +58,7 @@ def format_record(record: dict) -> str:
     return format_string
 
 
-def init_logging():
+def init_logging(level: str = 'INFO'):
     """
     Replaces logging handlers with a handler for using the custom handler.
 
@@ -92,9 +92,17 @@ def init_logging():
     logging.getLogger("uvicorn").handlers = [intercept_handler]
 
     # set logs output, level and format
-    logger.configure(
-        handlers=[{"sink": sys.stdout,
-                   "level": logging.DEBUG,
-                   "format": format_record}
-                  ]
-    )
+    if level == 'DEBUG':
+        logger.configure(
+            handlers=[{"sink": sys.stdout,
+                       "level": logging.DEBUG,
+                       "format": format_record}
+                      ]
+        )
+    else:
+        logger.configure(
+            handlers=[{"sink": sys.stdout,
+                       "level": logging.INFO,
+                       "format": format_record}
+                      ]
+        )

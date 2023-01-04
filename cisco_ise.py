@@ -11,6 +11,8 @@ import traceback
 
 # Setup config
 init_logging()
+# Specify level = 'DEBUG' if Debug data is needed.
+# init_logging(level='DEBUG')
 
 requests.packages.urllib3.disable_warnings()
 
@@ -145,7 +147,7 @@ def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
         time.sleep(1)
     else:
         logger.info(
-            f"Cisco ISE API: Connection Succeeded, User details for {username} Retrieved")
+            f"Cisco ISE API: Connection Succeeded, User details for {username} updated and synced with ISE")
         return user
     return None
 

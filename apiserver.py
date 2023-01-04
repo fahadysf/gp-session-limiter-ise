@@ -6,7 +6,7 @@ import yaml
 from fastapi import Request, FastAPI
 from logger import init_logging, logger
 
-app = FastAPI(debug=True)
+app = FastAPI(debug=False)
 # Setup Logging config
 init_logging()
 
@@ -69,8 +69,15 @@ async def connected_event(request: Request) -> dict:
 
 @ app.post("/disconnected")
 async def disconnected_event(request: Request) -> dict:
+    global config
+    global fw_api_key
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     data = await request.json()
+    gp_connected_user_data = pan_fw.fw_gp_ext(config['fw_ip'], fw_api_key)
+    if data['InternalUser']['name'] in gp_connected_user_data.keys():
+        if len(gp_connected_user_data[data['InternalUser']['name']]) > 0:
+            sync_gp_session_state(config)
+            return {"info": f"User {data['InternalUser']['name']} updated with existing session data."}
     logger.info(json.dumps(data, indent=2))
     if 'customAttributes' in data['InternalUser'].keys():
         res = update_user(data['InternalUser']['name'],
@@ -122,13 +129,10 @@ def update_user(user: str, custom_attributes: dict) -> bool:
     return res
 
 
-def sync_gp_session_state(config: dict) -> bool:
+def sync_gp_session_state(config: dict, initial: bool = False) -> bool:
     global ise_token
     global fw_api_key
-    gp_connected_user_datalist = pan_fw.fw_gp_ext(config['fw_ip'], fw_api_key)
-    gp_connected_user_data = dict()
-    for entry in gp_connected_user_datalist:
-        gp_connected_user_data[entry['Username']] = entry
+    gp_connected_user_data = pan_fw.fw_gp_ext(config['fw_ip'], fw_api_key)
     logger.info(f"Connected GP Users Data:\n {gp_connected_user_data}")
     ise_gp_connected_users = []
     for user in cisco_ise.all_users:
@@ -136,18 +140,18 @@ def sync_gp_session_state(config: dict) -> bool:
             if cisco_ise.all_users[user]['customAttributes']['PaloAlto-GlobalProtect-Client-Version'] != "N-A":
                 ise_gp_connected_users.append(user)
     for user in gp_connected_user_data:
-        if user not in ise_gp_connected_users:
+        if initial or (user not in ise_gp_connected_users):
             cache_user = cisco_ise.ise_enrich_user(
                 config['ise_api_ip'],
                 ise_token,
                 user)
             if cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version'] == "N-A":
-                u_dict = gp_connected_user_data[user]
+                u_dict = gp_connected_user_data[user][0]
                 custom_attributes = {
                     "PaloAlto-Client-Hostname": u_dict['Client-Hostname'],
                     "PaloAlto-Client-OS": u_dict['Client-OS'],
                     "PaloAlto-Client-Source-IP": u_dict['Client-Source-IP'],
-                    "PaloAlto-GlobalProtect-Client-Version": 'Connected-Unknown'
+                    "PaloAlto-GlobalProtect-Client-Version": 'X.X.X-Unknown'
                 }
                 try:
                     cisco_ise.ise_update_user(
@@ -183,3 +187,7 @@ def sync_gp_session_state(config: dict) -> bool:
                 logger.warning(
                     f"Updated user {user} on ISE to GP Non-connected state")
     return gp_connected_user_data
+
+
+# Perform an initial sync
+sync_gp_session_state(config, initial=True)
