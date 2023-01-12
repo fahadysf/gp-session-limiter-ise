@@ -6,10 +6,11 @@ import time
 import pickle
 import os
 from logger import init_logging, logger
-
+from config import get_config
 import traceback
 
 # Setup config
+config = get_config()
 init_logging()
 # Specify level = 'DEBUG' if Debug data is needed.
 # init_logging(level='DEBUG')
@@ -152,30 +153,55 @@ def ise_get_user_details(ise_ip, ise_auth, user):
     Returns:
     - The JSON response from the API call.
     """
-    api_path = f"/ers/config/internaluser/{user['id']}"
+    global all_users
     try:
-        logger.info(
-            f"Cisco ISE API: Request ISE User {user['name']} Details, ISE {ise_ip}")
-        response = ise_api_call(ise_ip, ise_auth, api_path)
+        api_path = f"/ers/config/internaluser/{user['id']}"
     except Exception:
-        logger.error(
-            f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
-        traceback.print_exc()
-    else:
-        logger.info(
-            f"Cisco ISE API: User {user['name']} Details Retrieved, ISE {ise_ip}")
-    return response.json()
+        logger.debug(
+            f"User Details: {json.dumps(user, indent=2, sort_keys=True)}")
+        raise
+    if user['name'] in all_users:
+        data = all_users[user['name']]
+        # If cache is fresh, return cached data
+        if 'customAttributes' in data and 'timestamp' in data and data['timestamp'] > time.time() - config['ise_cache_ttl']:
+            logger.debug(
+                f"Cisco ISE Data Cache Hit for user {user['name']} with data freshness {time.time() - data['timestamp']}s")
+            data = all_users[user['name']]
+        else:
+            # If cache is stale or user details are not known, retrieve from ISE
+            logger.warning(
+                f"Cisco ISE Data Cache Miss for user {user['name']}")
+            if user['name'] in all_users:
+                logger.debug(
+                    f"User Details: {json.dumps(all_users[user['name']], indent=2, sort_keys=True)}")
+            else:
+                logger.debug(f"User Details for {user} not found in cache.")
+            try:
+                logger.info(
+                    f"Cisco ISE API: Request ISE User {user['name']} Details, ISE {ise_ip}")
+                response = ise_api_call(ise_ip, ise_auth, api_path)
+            except Exception:
+                logger.error(
+                    f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
+                traceback.print_exc()
+            else:
+                logger.info(
+                    f"Cisco ISE API: User {user['name']} Details Retrieved, ISE {ise_ip}")
+            data = response.json()['InternalUser']
+            data['timestamp'] = time.time()
+    return data
 
 
 def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
     global all_users
     try:
         if username in all_users:
-            logger.info(f"Cache Hit for user {username}")
+            logger.info(f"User {username} found in cache.")
         else:
             all_users = ise_get_all_users(ise_ip, ise_auth)
         all_users[username] = ise_get_user_details(
-            ise_ip, ise_auth, all_users[username])['InternalUser']
+            ise_ip, ise_auth, all_users[username])
+        # Save user data to cache
         save_user_data()
         user = all_users[username]
     except Exception as e:
@@ -185,7 +211,7 @@ def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
         time.sleep(1)
     else:
         logger.info(
-            f"Cisco ISE API: Connection Succeeded, User details for {username} updated and synced with ISE")
+            f"User details for {username} synced with ISE Data Cache.")
         return user
     return None
 
