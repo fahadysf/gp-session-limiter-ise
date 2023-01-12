@@ -204,6 +204,9 @@ def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
         # Save user data to cache
         save_user_data()
         user = all_users[username]
+    except KeyError:
+        logger.error(
+            f"Cisco ISE API: User {username} not found on ISE {ise_ip}")
     except Exception as e:
         logger.error(
             f"Cisco ISE API: ISE {ise_ip} Unreachable or error occurred")
