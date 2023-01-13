@@ -7,7 +7,7 @@ from logger import init_logging, logger
 
 app = FastAPI(debug=False)
 # Setup Logging config
-init_logging(level='DEBUG')
+init_logging()
 
 
 config = get_config()
@@ -35,6 +35,8 @@ async def connected_event(request: Request) -> dict:
     else:
         res = update_user(data['InternalUser']['name'], {
             'PaloAlto-GlobalProtect-Client-Version': "Unknown"})
+    logger.warning(
+        f"User {data['InternalUser']['name']} connected to GP. Attributes updated in ISE.")
     return res.json()
 
 
@@ -48,8 +50,10 @@ async def disconnected_event(request: Request) -> dict:
     if data['InternalUser']['name'] in gp_connected_user_data.keys():
         if len(gp_connected_user_data[data['InternalUser']['name']]) > 0:
             sync_gp_session_state(config)
+            logger.warning(
+                f"User {data['InternalUser']['name']} updated with existing session data on ISE.")
             return {"info": f"User {data['InternalUser']['name']} updated with existing session data."}
-    logger.info(json.dumps(data, indent=2))
+    logger.debug(json.dumps(data, indent=2))
     if 'customAttributes' in data['InternalUser'].keys():
         res = update_user(data['InternalUser']['name'],
                           data['InternalUser']['customAttributes'])
@@ -63,19 +67,56 @@ async def disconnected_event(request: Request) -> dict:
                 "PaloAlto-GlobalProtect-Client-Version": "N-A"
             })
 
+    logger.warning(
+        f"User {data['InternalUser']['name']} disconnected from GP. Attributes updated in ISE.")
     return res.json()
 
 
-@app.get('/debug/getusers')
+@app.get('/debug/getusersfromise')
 async def get_users_ise(request: Request) -> dict:
+    """
+    Retrieve all users from ISE and cache them.
+
+    Args:
+    request (Request): The incoming request object.
+
+    Returns:
+    dict: A dictionary containing all the ISE users.
+
+    """
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global ise_token
     global config
     return cisco_ise.ise_get_all_users(config['ise_api_ip'], ise_token)
 
 
+@app.get('/debug/getcachedusers')
+async def get_users_cache(request: Request) -> dict:
+    """
+    Retrieve all users from cache.
+
+    Args:
+    request (Request): The incoming request object.
+
+    Returns:
+    dict: A dictionary containing all the ISE users from the cache.
+
+    """
+    logger.info(f"{request.client.host} - {request.method} - {request.url}")
+    return cisco_ise.all_users
+
+
 @app.get('/sync')
 async def sync_request(request: Request) -> dict:
+    """
+    Sync the ISE users with the connected state from the firewall.
+
+    Args:
+    request (Request): The incoming request object.
+
+    Returns:
+    dict: A dictionary containing data about GP connected users from the firewall.
+    """
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global config
     return sync_gp_session_state(config)
@@ -83,6 +124,16 @@ async def sync_request(request: Request) -> dict:
 
 @app.get('/syncuser/{username}')
 async def sync_user_request(username: str, request: Request) -> dict:
+    """ 
+    Sync a single user with the connected state from the firewall.
+
+    Args:
+    - username (str): The username of the user to sync.
+    - request (Request): The incoming request object.
+
+    Returns:
+    dict: A dictionary containing the user data after the update.
+    """
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global config
     global ise_token

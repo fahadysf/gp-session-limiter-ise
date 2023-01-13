@@ -180,8 +180,8 @@ def ise_get_user_details(ise_ip, ise_auth, user):
         data = all_users[user['name']]
         # If cache is fresh, return cached data
         if 'customAttributes' in data and 'timestamp' in data and data['timestamp'] > time.time() - config['ise_cache_ttl']:
-            logger.debug(
-                f"Cisco ISE Data Cache Hit for user {user['name']} with data freshness {time.time() - data['timestamp']}s")
+            logger.info(
+                f"Cisco ISE Data Cache Hit for user {user['name']} with data freshness {(time.time() - data['timestamp']):.2f}s")
             data = all_users[user['name']]
         else:
             # If cache is stale or user details are not known, retrieve from ISE
@@ -193,7 +193,7 @@ def ise_get_user_details(ise_ip, ise_auth, user):
             else:
                 logger.debug(f"User Details for {user} not found in cache.")
             try:
-                logger.info(
+                logger.debug(
                     f"Cisco ISE API: Request ISE User {user['name']} Details, ISE {ise_ip}")
                 response = ise_api_call(ise_ip, ise_auth, api_path)
             except Exception:
@@ -212,8 +212,10 @@ def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
     global all_users
     try:
         if username in all_users:
-            logger.info(f"User {username} found in cache.")
+            logger.debug(f"User {username} found in cache.")
         else:
+            logger.warning(
+                f"User {username} not found in cache. Fetching full list of users from ISE.")
             all_users = ise_get_all_users(ise_ip, ise_auth)
         all_users[username] = ise_get_user_details(
             ise_ip, ise_auth, all_users[username])
@@ -229,7 +231,7 @@ def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
         traceback.print_exc()
         time.sleep(1)
     else:
-        logger.info(
+        logger.debug(
             f"User details for {username} synced with ISE Data Cache.")
         return user
     return None

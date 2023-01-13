@@ -52,7 +52,7 @@ def fw_gp_ext(fw_ip, fw_key):
     }
     if "fw_gp_sessions" in fw_data.keys() and fw_data["fw_gp_sessions_timestamp"] > time.time() - config['fw_gp_sessions_ttl']:
         logger.debug(
-            f"FW GP Sessions data cache hit, freshness: {time.time() - fw_data['fw_gp_sessions_timestamp']}s")
+            f"FW GP Sessions data cache hit, freshness: {(time.time() - fw_data['fw_gp_sessions_timestamp']):.2f}s")
         gp_connected_user_data = fw_data["fw_gp_sessions"]
     else:
         logger.warning(
@@ -69,12 +69,12 @@ def fw_gp_ext(fw_ip, fw_key):
             raise ValueError(
                 f" PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable")
         else:
-            logger.info(
+            logger.debug(
                 f"PAN-OS API: Analyzing GP-Gateway Connected Users, Firewall {fw_ip}")
             result = xmltodict.parse(response.text)["response"]["result"]
             gp_users = []
             if result:
-                logger.info(
+                logger.debug(
                     f"PAN-OS API: Found Users Connected to GP-Gateway, Firewall {fw_ip}")
                 if type(result["entry"]) == dict:
                     result["entry"] = [result["entry"]]
@@ -85,10 +85,10 @@ def fw_gp_ext(fw_ip, fw_key):
                     user["Client-OS"] = _["client"]
                     user["Client-Source-IP"] = _["client-ip"]
                     gp_users.append(user)
-                    logger.info(
+                    logger.debug(
                         f"PAN-OS API: User \"{user['Username']}\" Connected to GP-Gateway, Firewall {fw_ip}")
             else:
-                logger.info(
+                logger.debug(
                     f"PAN-OS API: NO Users Connected to GP-Gateway, Firewall {fw_ip}")
             for entry in gp_users:
                 if entry['Username'] in gp_connected_user_data.keys():
