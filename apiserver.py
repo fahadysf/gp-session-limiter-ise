@@ -83,7 +83,7 @@ async def sync_user_request(username: str, request: Request) -> dict:
         ise_token,
         username
     )
-    if user and user['customAttributes']['PaloAlto-GlobalProtect-Client-Version'] != "N-A":
+    if user and '.' in user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
         logger.info(f"User {user['name']} synced with connected state on ISE")
         sync_gp_session_state(config)
     return user
@@ -107,7 +107,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> bool:
     ise_gp_connected_users = []
     for user in cisco_ise.all_users:
         if 'customAttributes' in cisco_ise.all_users[user].keys():
-            if cisco_ise.all_users[user]['customAttributes']['PaloAlto-GlobalProtect-Client-Version'] != "N-A":
+            if '.' in cisco_ise.all_users[user]['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
                 ise_gp_connected_users.append(user)
     for user in gp_connected_user_data:
         if initial or (user not in ise_gp_connected_users):
@@ -115,7 +115,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> bool:
                 config['ise_api_ip'],
                 ise_token,
                 user)
-            if cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version'] == "N-A":
+            if '.' not in cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
                 u_dict = gp_connected_user_data[user][0]
                 custom_attributes = {
                     "PaloAlto-Client-Hostname": u_dict['Client-Hostname'],

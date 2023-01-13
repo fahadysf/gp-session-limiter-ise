@@ -5,9 +5,10 @@ import requests
 import time
 import pickle
 import os
+import traceback
 from logger import init_logging, logger
 from config import get_config
-import traceback
+from urllib.parse import urlparse
 
 # Setup config
 config = get_config()
@@ -121,24 +122,35 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
     - all_users: A dictionary containing all of the users on the ISE server.
     """
     global all_users
-    api_path = f"/ers/config/internaluser"
-
-    for _ in range(3):
-        try:
-            logger.info(f"Cisco ISE API: Request All ISE Users, ISE {ise_ip}")
-            response = ise_api_call(ise_ip, ise_auth, api_path)
-        except Exception as e:
-            logger.error(
-                f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred")
-            traceback.print_exc()
-            time.sleep(1)
-        else:
-            logger.info(
-                f"Cisco ISE API: Connection Succeeded, ISE {ise_ip} Users Retrieved")
-            users_ext = response.json()["SearchResult"]["resources"]
-            for _ in users_ext:
-                all_users[_['name']] = _
-            return all_users
+    api_path = f"/ers/config/internaluser?size=100&page=1"
+    continue_flag = True
+    while continue_flag:
+        for _ in range(3):
+            try:
+                logger.info(
+                    f"Cisco ISE API: Request All ISE Users, ISE {ise_ip}")
+                response = ise_api_call(ise_ip, ise_auth, api_path)
+            except Exception as e:
+                logger.error(
+                    f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred")
+                traceback.print_exc()
+                time.sleep(1)
+            else:
+                logger.info(
+                    f"Cisco ISE API: Connection Succeeded, ISE {ise_ip} Users Retrieved")
+                users_ext = response.json()["SearchResult"]["resources"]
+                logger.debug(f"Users Retrieved on page: {len(users_ext)}")
+                for _ in users_ext:
+                    all_users[_['name']] = _
+                if 'nextPage' in response.json()["SearchResult"]:
+                    next_url = response.json(
+                    )["SearchResult"]['nextPage']['href']
+                    p = urlparse(next_url)
+                    api_path = f"{p.path}?{p.query}"
+                else:
+                    logger.debug(f"All Users Count: {len(all_users.keys())}")
+                    continue_flag = False
+    return all_users
 
 
 def ise_get_user_details(ise_ip, ise_auth, user):
