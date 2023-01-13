@@ -141,7 +141,11 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
                 users_ext = response.json()["SearchResult"]["resources"]
                 logger.debug(f"Users Retrieved on page: {len(users_ext)}")
                 for _ in users_ext:
-                    all_users[_['name']] = _
+                    if _['name'] in all_users:
+                        for k in _:
+                            all_users[_['name']][k] = _[k]
+                    else:
+                        all_users[_['name']] = _
                 if 'nextPage' in response.json()["SearchResult"]:
                     next_url = response.json(
                     )["SearchResult"]['nextPage']['href']

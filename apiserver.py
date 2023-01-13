@@ -66,6 +66,14 @@ async def disconnected_event(request: Request) -> dict:
     return res.json()
 
 
+@app.get('/debug/getusers')
+async def get_users_ise(request: Request) -> dict:
+    logger.info(f"{request.client.host} - {request.method} - {request.url}")
+    global ise_token
+    global config
+    return cisco_ise.ise_get_all_users(config['ise_api_ip'], ise_token)
+
+
 @app.get('/sync')
 async def sync_request(request: Request) -> dict:
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
