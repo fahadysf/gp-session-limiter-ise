@@ -1,6 +1,6 @@
 # gp-session-limiter-ise
 
-TODO: Need to write a proer guide / readme.
+TODO: Need to write a proper guide / readme.
 
 The Middleware server can be run using:
 ```uvicorn apiserver:app --reload --host 192.0.0.30```
