@@ -1,0 +1,12 @@
+fw_credentials:
+  username: fw_admin
+  password: fw_password
+fw_gp_sessions_ttl: 30
+fw_ip: 192.168.1.10
+fw_key_ttl: 86400
+ise_api_ip: 192.168.1.20
+ise_api_port: 9060
+ise_cache_ttl: 60
+ise_credentials:
+  username: ise_admin
+  password: ise_password
