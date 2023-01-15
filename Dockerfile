@@ -1,17 +1,9 @@
 #Dockerfile
-FROM ubuntu
-MAINTAINER Yasser Saied
+FROM python:3.10-slim
+MAINTAINER Fahad Yousuf <fyousuf@paloaltonetworks.com>
 
-#Install packages
-RUN apt-get update
-RUN apt-get install -yqq software-properties-common
-RUN apt-get install -yqq iproute2
-RUN apt-get install -yqq iputils-ping
-RUN apt-get install -yqq python3
-RUN apt-get install -yqq python3-pip
-RUN apt-get install -yqq net-tools
-RUN apt-get install -yqq nano
-
+#Install packages (Network Tools)
+RUN apt-get update && apt-get install -yqq git
 
 # Set password and perform cleanup
 RUN echo 'root:root' | chpasswd
@@ -22,12 +14,17 @@ RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 ENV TZ=Asia/Dubai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-#Set working Dir to /root
-VOLUME [ "/root" ]
+RUN mkdir /app
 
-COPY *.py ./
-RUN chmod +x  *.py
+# Volume definitions
+VOLUME [ "/app/data" ]
+
+#Set working Dir to /app
+WORKDIR /app
+
+# Copy files to /app
+COPY *.py *.txt *.md /app/
 #Install Python Packages
-RUN pip3 install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
-ENTRYPOINT ["./main.py"]
+CMD [ "/usr/local/bin/uvicorn", "apiserver:app", "--host", "0.0.0.0", "--port", "8000"]

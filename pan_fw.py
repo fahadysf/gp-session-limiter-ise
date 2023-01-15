@@ -65,9 +65,8 @@ def fw_gp_ext(fw_ip, fw_key):
                 "GET", url=api_url, params=api_prm, verify=False, timeout=3)
         except Exception:
             logger.error(
-                f"PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable")
-            raise ValueError(
-                f" PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable")
+                f"PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable. Exiting after 3 retries.")
+            exit(1)
         else:
             logger.debug(
                 f"PAN-OS API: Analyzing GP-Gateway Connected Users, Firewall {fw_ip}")

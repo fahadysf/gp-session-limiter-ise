@@ -124,7 +124,7 @@ async def sync_request(request: Request) -> dict:
 
 @app.get('/syncuser/{username}')
 async def sync_user_request(username: str, request: Request) -> dict:
-    """ 
+    """
     Sync a single user with the connected state from the firewall.
 
     Args:
@@ -148,7 +148,17 @@ async def sync_user_request(username: str, request: Request) -> dict:
     return user
 
 
-def update_user(user: str, custom_attributes: dict) -> bool:
+def update_user(user: str, custom_attributes: dict) -> dict:
+    """
+    Update a user in ISE with custom attributes.
+
+    Args:
+    - user (str): The username of the user to update.
+    - custom_attributes (dict): A dictionary containing the custom attributes to update.
+
+    Returns:
+    dict: A dictionary containing the user data after the update.
+    """
     global ise_token
     res = cisco_ise.ise_update_user(
         config['ise_api_ip'],
@@ -159,7 +169,17 @@ def update_user(user: str, custom_attributes: dict) -> bool:
     return res
 
 
-def sync_gp_session_state(config: dict, initial: bool = False) -> bool:
+def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
+    """
+    A function to sync the GP connected state from the firewall with the ISE users.
+
+    Args:
+    - config (dict): A dictionary containing the configuration data.
+    - initial (bool): A boolean to indicate if this is the initial sync.
+
+    Returns:
+    - dict: A dictionary containing the GP connected users from the firewall.
+    """
     global ise_token
     global fw_api_key
     gp_connected_user_data = pan_fw.fw_gp_ext(config['fw_ip'], fw_api_key)
