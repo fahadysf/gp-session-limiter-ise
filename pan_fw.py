@@ -13,6 +13,7 @@ config = get_config()
 
 # Setup logging
 init_logging()
+logger.debug("Debug Logging Enabled")
 requests.packages.urllib3.disable_warnings()
 
 

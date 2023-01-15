@@ -1,12 +1,19 @@
 """Configure handlers and formats for application loggers."""
 import logging
 import sys
+import os
 from pprint import pformat
 
 # if you dont like imports of private modules
 # you can move it to typing.py module
 from loguru import logger
 from loguru._defaults import LOGURU_FORMAT
+
+DEBUG = os.environ.get('DEBUG', False)
+if DEBUG and (DEBUG.lower() != "false" and DEBUG.lower() != "0"):
+    LOG_LEVEL = "DEBUG"
+else:
+    LOG_LEVEL = "INFO"
 
 
 class InterceptHandler(logging.Handler):
@@ -58,7 +65,7 @@ def format_record(record: dict) -> str:
     return format_string
 
 
-def init_logging(level: str = 'INFO'):
+def init_logging(level: str = LOG_LEVEL):
     """
     Replaces logging handlers with a handler for using the custom handler.
 
