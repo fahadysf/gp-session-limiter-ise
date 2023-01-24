@@ -100,16 +100,15 @@ def init_logging(level: str = LOG_LEVEL):
 
     # set logs output, level and format
     if level == 'DEBUG':
-        logger.configure(
-            handlers=[{"sink": sys.stdout,
-                       "level": logging.DEBUG,
-                       "format": format_record}
-                      ]
-        )
-    else:
-        logger.configure(
-            handlers=[{"sink": sys.stdout,
-                       "level": logging.INFO,
-                       "format": format_record}
-                      ]
-        )
+        log_level = logging.DEBUG
+    elif level == 'INFO':
+        log_level = logging.INFO
+    elif level == 'WARNING':
+        log_level = logging.WARNING
+
+    logger.configure(
+        handlers=[{"sink": sys.stdout,
+                   "level": log_level,
+                   "format": format_record}
+                  ]
+    )

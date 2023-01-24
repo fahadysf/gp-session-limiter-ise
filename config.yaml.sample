@@ -1,14 +1,20 @@
-fw_credentials:
-  username: fw_admin
-  password: fw_password
+# Make a copy of this file as 'config.yaml' 
+# and run config.py to initialize credentials
+
 # TTL for GP Session Data Cache (Default 30s)
 fw_gp_sessions_ttl: 30
 fw_ip: 192.168.1.10
-fw_key_ttl: 86400
+fw_credentials:
+  api_key:  
+
+# ISE configuration
 ise_api_ip: 192.168.1.20
 ise_api_port: 9060
+ise_credentials:
+  token: 
+
 # TTL for User Detailed Record Cache
 ise_cache_ttl: 60
-ise_credentials:
-  username: ise_admin
-  password: ise_password
+
+# Note that once credentials are initialized all comments 
+# will be removed from the live config file (config.yaml)

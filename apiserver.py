@@ -12,17 +12,16 @@ init_logging()
 
 
 config = get_config()
-ise_token = cisco_ise.ise_auth(
-    config['ise_credentials']['username'],
-    config['ise_credentials']['password']
-)
+ise_token = config['ise_credentials']['token']
 
-fw_api_key = pan_fw.fw_data['fw_key']
+try:
+    fw_api_key = config['fw_credentials']['api_key']
+except Exception:
+    fw_api_key = None
+
 if fw_api_key is None:
     logger.error(
-        "PAN-OS API Key is empty. Please check connectivity to FW and Credentials. API Disabled.")
-    logger.warning(
-        "GP Sessions Tool Disabled, please fix FW API reachability and restart app.")
+        "PAN-OS API Key is empty. Please ensure valid key is initialized in config (use config.py to regenerate). API Disabled.")
     exit(1)
 
 
