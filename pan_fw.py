@@ -37,9 +37,15 @@ def fw_key(fw_ip, uname, pwd):
         else:
             logger.info(
                 f"PAN-OS API: Connection Succeeded, Firewall {fw_ip} Key Retrieved")
-            key = xmltodict.parse(response.text)["response"]["result"]["key"]
+            try:
+                key = xmltodict.parse(response.text)[
+                    "response"]["result"]["key"]
+            except Exception:
+                logger.error(
+                    "FW API Key Not Generated. Please check connection and credentials.")
+                return None
             return key
-    return False
+    return None
 
 
 def fw_gp_ext(fw_ip, fw_key):
@@ -114,11 +120,14 @@ def fw_gp_lst(gp_ext):
 
 def save_fw_cache():
     global fw_data
-    try:
-        with open('data/fw_data.pickle', 'wb') as fd:
-            pickle.dump(fw_data, fd, protocol=pickle.HIGHEST_PROTOCOL)
-    except Exception:
-        raise
+    if "fw_key" in fw_data and not fw_data["fw_key"] is None:
+        try:
+            with open('data/fw_data.pickle', 'wb') as fd:
+                pickle.dump(fw_data, fd, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception:
+            raise
+    else:
+        logger.error("FW Data Cache Not Saved. No Data to Save.")
 
 
 def get_fw_cache():

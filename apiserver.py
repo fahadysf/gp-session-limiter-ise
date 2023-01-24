@@ -1,3 +1,4 @@
+import asyncio
 import cisco_ise
 import pan_fw
 import json
@@ -17,6 +18,22 @@ ise_token = cisco_ise.ise_auth(
 )
 
 fw_api_key = pan_fw.fw_data['fw_key']
+if fw_api_key is None:
+    logger.error(
+        "PAN-OS API Key is empty. Please check connectivity to FW and Credentials. API Disabled.")
+    logger.warning(
+        "GP Sessions Tool Disabled, please fix FW API reachability and restart app.")
+    exit(1)
+
+
+@app.on_event('shutdown')
+def shutdown_event():
+    print('Shutting down...!')
+
+
+async def exit_app():
+    loop = asyncio.get_running_loop()
+    loop.stop()
 
 
 @app.get("/")
@@ -194,6 +211,10 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                 config['ise_api_ip'],
                 ise_token,
                 user)
+            if cache_user is None:
+                logger.error(
+                    'ISE user details not found. Please ensure ISE connectivity and check credentials')
+                return None
             if '.' not in cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
                 u_dict = gp_connected_user_data[user][0]
                 custom_attributes = {

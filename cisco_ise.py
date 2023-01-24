@@ -136,8 +136,15 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
                 traceback.print_exc()
                 time.sleep(1)
             else:
-                logger.info(
-                    f"Cisco ISE API: Connection Succeeded, ISE {ise_ip} Users Retrieved")
+                if response.status_code == 401:
+                    logger.error(
+                        "Cisco ISE API: Authentication Failure. Please check credentials")
+                    logger.error(
+                        f"Response: {response.text}, Status Code: {response.status_code}")
+                    return {}
+                elif response.status_code == 201:
+                    logger.info(
+                        f"Cisco ISE API: Connection Succeeded, ISE {ise_ip} Users Retrieved")
                 users_ext = response.json()["SearchResult"]["resources"]
                 logger.debug(f"Users Retrieved on page: {len(users_ext)}")
                 for _ in users_ext:
@@ -199,7 +206,8 @@ def ise_get_user_details(ise_ip, ise_auth, user):
             except Exception:
                 logger.error(
                     f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
-                traceback.print_exc()
+                logger.error(
+                    f"Response: {response.text}, Status Code: {response.status_code}")
             else:
                 logger.info(
                     f"Cisco ISE API: User {user['name']} Details Retrieved, ISE {ise_ip}")
@@ -228,7 +236,6 @@ def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
     except Exception as e:
         logger.error(
             f"Cisco ISE API: ISE {ise_ip} Unreachable or error occurred")
-        traceback.print_exc()
         time.sleep(1)
     else:
         logger.debug(

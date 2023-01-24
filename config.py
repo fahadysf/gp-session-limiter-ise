@@ -5,8 +5,9 @@ from logger import init_logging, logger
 
 def get_config(config_file="config.yaml") -> dict:
     with open(config_file, "r") as yamlfile:
-        config = yaml.load(yamlfile, Loader=yaml.FullLoader)
+        orig_config = yaml.load(yamlfile, Loader=yaml.FullLoader)
         logger.info(f"Read config successfully from {config_file}")
+    config = orig_config
     if "FW_IP" in os.environ:
         config['fw_ip'] = os.environ["FW_IP"]
     if "FW_UNAME" in os.environ:
@@ -20,8 +21,9 @@ def get_config(config_file="config.yaml") -> dict:
     if "ISE_PWD" in os.environ:
         config['ise_credentials']['password'] = os.environ["ISE_PWD"]
     # Update config based on env variables
-    with open(config_file, 'w') as yamlfile:
-        yaml.dump(config, yamlfile, default_flow_style=False)
-        logger.info(
-            f"Config successfully updated based on Environment Variables (Output: {config_file})")
+    if orig_config != config:
+        with open(config_file, 'w') as yamlfile:
+            yaml.dump(config, yamlfile, default_flow_style=False)
+            logger.info(
+                f"Config successfully updated based on Environment Variables (Output: {config_file})")
     return config
