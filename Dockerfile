@@ -24,6 +24,8 @@ WORKDIR /app
 
 # Copy files to /app
 COPY *.py *.txt *.md /app/
+RUN echo "#!/bin/bash \npython3 config.py" > /usr/bin/config && chmod +x /usr/bin/config
+
 #Install Python Packages
 RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 

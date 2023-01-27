@@ -17,37 +17,6 @@ logger.debug("Debug Logging Enabled")
 requests.packages.urllib3.disable_warnings()
 
 
-def fw_key(fw_ip, uname, pwd):
-    api_url = f"https://{fw_ip}/api"
-    api_prm = {
-        "type": "keygen",
-        "user": {uname},
-        "password": {pwd}
-    }
-
-    for _ in range(3):
-        try:
-            logger.info(f"PAN-OS API: Connection Requested, Firewall {fw_ip}")
-            response = requests.request(
-                "GET", url=api_url, params=api_prm, verify=False, timeout=3)
-        except Exception:
-            logger.error(
-                f"PAN-OS API: Connection Failure, Firewall {fw_ip} Unreachable")
-            time.sleep(2)
-        else:
-            logger.info(
-                f"PAN-OS API: Connection Succeeded, Firewall {fw_ip} Key Retrieved")
-            try:
-                key = xmltodict.parse(response.text)[
-                    "response"]["result"]["key"]
-            except Exception:
-                logger.error(
-                    "FW API Key Not Generated. Please check connection and credentials.")
-                return None
-            return key
-    return None
-
-
 def fw_gp_ext(fw_ip, fw_key):
 
     global fw_data
@@ -141,11 +110,7 @@ def get_fw_cache():
             raise
     else:
         fw_data = {
-            'fw_key': fw_key(
-                config['fw_ip'],
-                config['fw_credentials']['username'],
-                config['fw_credentials']['password']
-            ),
+            'fw_key': config['fw_credentials']['api_key'],
             'fw_key_timestamp': time.time(),
             'fw_gp_sessions': {},
             'fw_gp_sessions_timestamp': time.time(),
@@ -155,4 +120,3 @@ def get_fw_cache():
 
 
 fw_data = get_fw_cache()
-fw_api_key = fw_data['fw_key']
