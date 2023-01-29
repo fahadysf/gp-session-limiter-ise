@@ -138,7 +138,7 @@ async def sync_request(request: Request) -> dict:
     return sync_gp_session_state(config)
 
 
-@app.get('/syncuser/{username}')
+@app.post('/syncuser/{username}')
 async def sync_user_request(username: str, request: Request) -> dict:
     """
     Sync a single user with the connected state from the firewall.
@@ -150,6 +150,11 @@ async def sync_user_request(username: str, request: Request) -> dict:
     Returns:
     dict: A dictionary containing the user data after the update.
     """
+    try:
+        data = await request.json()
+        logger.debug(f"POST Data Received: {json.dumps(data, indent=2)}")
+    except Exception:
+        logger.error(f"Malformed request received for /syncuser/{username}")
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global config
     global ise_token
@@ -161,6 +166,10 @@ async def sync_user_request(username: str, request: Request) -> dict:
     if user and '.' in user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
         logger.info(f"User {user['name']} synced with connected state on ISE")
         sync_gp_session_state(config)
+        attributes = data['InternalUser']['customAttributes']
+        if attributes != user['customAttributes']:
+            logger.warning(
+                f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
     return user
 
 
