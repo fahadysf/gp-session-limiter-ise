@@ -202,17 +202,17 @@ async def sync_user_request(username: str, request: Request) -> dict:
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
             csvlogfile = csv_log()
-            csv_entry = f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")},'
-            f'{user["name"]},'
-            f'{datetime.datetime.now().strftime("%b.%d.%Y")},'
-            f'{datetime.datetime.now().strftime("%H:%M:%S")},'
-            f'{user["customAttributes"]["PaloAlto-Client-Hostname"]},'
-            f'{user["customAttributes"]["PaloAlto-Client-OS"]},'
-            f'{user["customAttributes"]["PaloAlto-Client-Source-IP"]},'
-            f'{gpusers[user["name"]][0]["Raw-Data"]["source-region"]},'
-            f'{attributes["PaloAlto-Client-Hostname"]},'
-            f'{attributes["PaloAlto-Client-OS"]},'
-            f'{attributes["PaloAlto-Client-Source-IP"]},'
+            csv_entry = f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")},' \
+            f'{user["name"]},' \
+            f'{datetime.datetime.now().strftime("%b.%d.%Y")},' \
+            f'{datetime.datetime.now().strftime("%H:%M:%S")},' \
+            f'{user["customAttributes"]["PaloAlto-Client-Hostname"]},' \
+            f'{user["customAttributes"]["PaloAlto-Client-OS"]},' \
+            f'{user["customAttributes"]["PaloAlto-Client-Source-IP"]},' \
+            f'{gpusers[user["name"]][0]["Raw-Data"]["source-region"]},' \
+            f'{attributes["PaloAlto-Client-Hostname"]},' \
+            f'{attributes["PaloAlto-Client-OS"]},' \
+            f'{attributes["PaloAlto-Client-Source-IP"]},' \
             f'{attributes["PaloAlto-Client-Region"]}'
             with open(csvlogfile, "a+") as csv_file:
                 csv_file.write(csv_entry + "\n")
