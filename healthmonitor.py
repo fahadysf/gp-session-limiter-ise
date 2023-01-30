@@ -1,7 +1,7 @@
 # Configuration Section
 import json
 import ssl
-from urllib import request, parse
+from urllib import request
 
 ISE_IP = "192.0.0.22"
 ISE_TOKEN = "Basic ZnlvdXN1ZjpGYWhhZEAxMjM="
