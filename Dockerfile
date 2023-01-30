@@ -23,7 +23,7 @@ VOLUME [ "/app/data" ]
 WORKDIR /app
 
 # Copy files to /app
-COPY *.py *.txt *.md /app/
+COPY *.py *.txt *.md *.sample /app/
 RUN echo "#!/bin/bash \npython3 config.py" > /usr/bin/config && chmod +x /usr/bin/config
 
 #Install Python Packages

@@ -56,6 +56,12 @@ async def root():
     return {"message": "Please use the /connected and /disconnected endpoints."}
 
 
+@app.get("/health")
+async def root(request: Request) -> dict:
+    logger.info(f"{request.client.host} - {request.method} - {request.url}")
+    return {"message": "Health Check OK."}
+
+
 @app.post("/connected")
 async def connected_event(request: Request) -> dict:
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
@@ -160,6 +166,7 @@ async def sync_request(request: Request) -> dict:
     return sync_gp_session_state(config)
 
 
+@ app.get('/syncuser/{username}')
 @ app.post('/syncuser/{username}')
 async def sync_user_request(username: str, request: Request) -> dict:
     """
