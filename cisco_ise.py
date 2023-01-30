@@ -43,9 +43,6 @@ def save_user_data():
         raise
 
 
-all_users = load_user_data()
-
-
 def ise_auth(uname: str, pwd: str) -> str:
     """
     Calculates the Cisco ISE API basic authentication token.
@@ -107,6 +104,7 @@ def ise_api_call(ise_ip: str, ise_auth: str, path: str,
     except Exception:
         logger.error(f"Error occurred while trying API call for ISE {ise_ip}")
         traceback.print_exc()
+        return None
     return result
 
 
@@ -294,3 +292,73 @@ def ise_update_user(ise_ip: str,
             logger.info(
                 f"User {u['name']} updated.")
             return res
+
+
+def ise_get_all_devices(ise_ip: str, ise_auth: str) -> list:
+    """
+    Retrieves all devices from the ISE server.
+
+    Parameters:
+    - ise_ip (str): The IP address of the ISE server.
+    - ise_auth (str): The ISE API authorization token.
+
+    Returns:
+    - The JSON response from the API call.
+    """
+    api_path = "/ers/config/networkdevice?size=100&page=1"
+    continue_flag = True
+    while continue_flag:
+        for _ in range(3):
+            try:
+                logger.info(
+                    f"Cisco ISE API: Request All ISE Devices, from ISE {ise_ip}")
+                response = ise_api_call(ise_ip, ise_auth, api_path)
+            except Exception as e:
+                logger.error(
+                    f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred")
+                logger.debug(traceback.format_exc())
+                time.sleep(1)
+            else:
+                if response.status_code == 401:
+                    logger.error(
+                        "Cisco ISE API: Authentication Failure. Please check credentials")
+                    logger.error(
+                        f"Response: {response.text}, Status Code: {response.status_code}")
+                    return []
+                logger.info(
+                    f"Cisco ISE API: ISE Devices Retrieved, ISE {ise_ip}")
+                continue_flag = False
+                break
+        continue_flag = False
+    return response.json()['SearchResult']['resources']
+
+
+def ise_get_device_details(ise_ip: str, ise_auth: str, device: dict) -> dict:
+    """
+    Retrieves the details of a device from the ISE server.
+
+    Parameters:
+    - ise_ip (str): The IP address of the ISE server.
+    - ise_auth (str): The ISE API authorization token.
+    - device (dict): The device to retrieve details for.
+
+    Returns:
+    - The JSON response from the API call.
+    """
+
+    api_path = f"/ers/config/networkdevice/{device['id']}"
+    data = ise_api_call(ise_ip, ise_auth, api_path).json()['NetworkDevice']
+    return data
+
+
+def ise_set_device_details(ise_ip: str, ise_auth: str, devicedata: dict) -> dict:
+    """"""
+    api_path = f"/ers/config/networkdevice/{devicedata['id']}"
+    api_payload_dict = {"NetworkDevice": devicedata}
+    res = ise_api_call(ise_ip, ise_auth, api_path, method="PUT",
+                       payload=json.dumps(api_payload_dict))
+    return res
+
+
+all_users = load_user_data()
+# all_devices = ise_get_all_devices(config['ise_api_ip'], config['ise_credentials']['token'])

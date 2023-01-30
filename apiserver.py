@@ -2,6 +2,8 @@ import asyncio
 import cisco_ise
 import pan_fw
 import json
+import datetime
+import os
 from config import get_config
 from fastapi import Request, FastAPI
 from logger import init_logging, logger
@@ -9,6 +11,20 @@ from logger import init_logging, logger
 app = FastAPI(debug=False)
 # Setup Logging config
 init_logging()
+# Setup CSV Logging
+
+
+def csv_log(csv_dir="./logs"):
+    csv_fname = f'{datetime.datetime.now().strftime("%Y-%m-%d.gp-dup-sessions.csv")}'
+    csv_path = os.path.join(csv_dir, csv_fname)
+    csv_header = "sn,username,date,time,connected-hostname,connected-os,connected-public-ip," \
+                 "denied-session-hostname,denied-session-os,denied-session-public-ip\n"
+    if not os.path.exists(csv_dir):
+        os.makedirs(csv_dir)
+    if not os.path.isfile(csv_path):
+        with open(csv_path, "a+") as csv_file:
+            csv_file.write(csv_header)
+    return csv_path
 
 
 config = get_config()
@@ -40,10 +56,22 @@ async def root():
     return {"message": "Please use the /connected and /disconnected endpoints."}
 
 
+@app.get("/health")
+async def root(request: Request) -> dict:
+    logger.info(f"{request.client.host} - {request.method} - {request.url}")
+    return {"message": "Health Check OK."}
+
+
 @app.post("/connected")
 async def connected_event(request: Request) -> dict:
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
-    data = await request.json()
+    try:
+        data = await request.json()
+        logger.debug(f"POST Data Received: {json.dumps(data, indent=2)}")
+    except Exception:
+        logger.error(f"Malformed request received for /connected endpoint.")
+        logger.debug(f"Request: {await request.body()}")
+        return
     logger.info(json.dumps(data, indent=2))
     if 'customAttributes' in data['InternalUser'].keys():
         res = update_user(data['InternalUser']['name'],
@@ -88,7 +116,7 @@ async def disconnected_event(request: Request) -> dict:
     return res.json()
 
 
-@app.get('/debug/getusersfromise')
+@ app.get('/debug/getusersfromise')
 async def get_users_ise(request: Request) -> dict:
     """
     Retrieve all users from ISE and cache them.
@@ -106,7 +134,7 @@ async def get_users_ise(request: Request) -> dict:
     return cisco_ise.ise_get_all_users(config['ise_api_ip'], ise_token)
 
 
-@app.get('/debug/getcachedusers')
+@ app.get('/debug/getcachedusers')
 async def get_users_cache(request: Request) -> dict:
     """
     Retrieve all users from cache.
@@ -122,7 +150,7 @@ async def get_users_cache(request: Request) -> dict:
     return cisco_ise.all_users
 
 
-@app.get('/sync')
+@ app.get('/sync')
 async def sync_request(request: Request) -> dict:
     """
     Sync the ISE users with the connected state from the firewall.
@@ -138,7 +166,8 @@ async def sync_request(request: Request) -> dict:
     return sync_gp_session_state(config)
 
 
-@app.get('/syncuser/{username}')
+@ app.get('/syncuser/{username}')
+@ app.post('/syncuser/{username}')
 async def sync_user_request(username: str, request: Request) -> dict:
     """
     Sync a single user with the connected state from the firewall.
@@ -150,6 +179,13 @@ async def sync_user_request(username: str, request: Request) -> dict:
     Returns:
     dict: A dictionary containing the user data after the update.
     """
+    try:
+        data = await request.json()
+        logger.debug(f"POST Data Received: {json.dumps(data, indent=2)}")
+    except Exception:
+        logger.error(f"Malformed request received for /syncuser/{username}")
+        logger.debug(f"Request: {await request.body()}")
+        return
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global config
     global ise_token
@@ -160,7 +196,26 @@ async def sync_user_request(username: str, request: Request) -> dict:
     )
     if user and '.' in user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
         logger.info(f"User {user['name']} synced with connected state on ISE")
-        sync_gp_session_state(config)
+        gpusers = sync_gp_session_state(config)
+        attributes = data['InternalUser']['customAttributes']
+        if attributes != user['customAttributes']:
+            logger.warning(
+                f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
+            csvlogfile = csv_log()
+            csv_entry = f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")},'
+            f'{user["name"]},'
+            f'{datetime.datetime.now().strftime("%b.%d.%Y")},'
+            f'{datetime.datetime.now().strftime("%H:%M:%S")},'
+            f'{user["customAttributes"]["PaloAlto-Client-Hostname"]},'
+            f'{user["customAttributes"]["PaloAlto-Client-OS"]},'
+            f'{user["customAttributes"]["PaloAlto-Client-Source-IP"]},'
+            f'{gpusers[user["name"]][0]["Raw-Data"]["source-region"]},'
+            f'{attributes["PaloAlto-Client-Hostname"]},'
+            f'{attributes["PaloAlto-Client-OS"]},'
+            f'{attributes["PaloAlto-Client-Source-IP"]},'
+            f'{attributes["PaloAlto-Client-Region"]}'
+            with open(csvlogfile, "a+") as csv_file:
+                csv_file.write(csv_entry + "\n")
     return user
 
 
