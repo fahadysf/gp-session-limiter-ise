@@ -16,5 +16,15 @@ ise_credentials:
 # TTL for User Detailed Record Cache
 ise_cache_ttl: 60
 
+# Email Notification Settings
+email_enabled:  0 # Set 1 to enable
+smtp_server: smtp.domain.com
+smtp_port: 587
+smtp_type: tls or cleartext
+mail_from: sender@domain.com
+mail_to: receiver@domain.com
+mail_password: sender_mail_password
+mail_subject: Duplicate GP Login Attempt Detected
+
 # Note that once credentials are initialized all comments 
 # will be removed from the live config file (config.yaml)

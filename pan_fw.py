@@ -59,6 +59,7 @@ def fw_gp_ext(fw_ip, fw_key):
                     user["Client-Hostname"] = _["computer"]
                     user["Client-OS"] = _["client"]
                     user["Client-Source-IP"] = _["client-ip"]
+                    user["Raw-Data"] = _
                     gp_users.append(user)
                     logger.debug(
                         f"PAN-OS API: User \"{user['Username']}\" Connected to GP-Gateway, Firewall {fw_ip}")
