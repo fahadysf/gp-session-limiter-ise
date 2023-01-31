@@ -10,8 +10,8 @@ RUN echo 'root:root' | chpasswd
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-#Set Timezone to Dubai GMT+4
-ENV TZ=Asia/Dubai
+#Set Timezone to Baghdad (GMT+3)
+ENV TZ=Asia/Baghdad
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN mkdir /app

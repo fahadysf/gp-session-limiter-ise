@@ -13,8 +13,14 @@ else
 fi
 
 # Build
-$DOCKER_CMD build . -t fahadysf/gptool:2.7-dev -t fahadysf/gptool:2.7-$TS -t fahadysf/gptool:2.7-latest
+$DOCKER_CMD build . \
+-t fahadysf/gptool:2.7-dev \
+-t fahadysf/gptool:2.7-$TS \
+-t fahadysf/gptool:2.7-latest \
+-t fahadysf/gptool:latest
+
 # Push
 $DOCKER_CMD push fahdaysf/gptool:2.7-dev
 $DOCKER_CMD push fahadysf/gptool:2.7-$TS
 $DOCKER_CMD push fahadysf/gptool:2.7-latest
+$DOCKER_CMD push fahadysf/gptool:latest
