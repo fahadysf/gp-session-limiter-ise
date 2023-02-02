@@ -1,6 +1,10 @@
 # Make a copy of this file as 'config.yaml' 
 # and run config.py to initialize credentials
 
+# API Credentials
+api_user: gptoolsvc
+api_password: 
+
 # TTL for GP Session Data Cache (Default 30s)
 fw_gp_sessions_ttl: 30
 fw_ip: 192.168.1.10
@@ -22,6 +26,7 @@ smtp_server: smtp.domain.com
 smtp_port: 587
 smtp_type: tls or cleartext
 mail_from: sender@domain.com
+mail_user: sender@domain.com
 mail_to: [ "receiver@domain.com", "another@domain.com" ]
 mail_password: sender_mail_password
 mail_subject: Duplicate GP Login Attempt Detected

@@ -53,7 +53,7 @@ def ise_auth(uname: str, pwd: str) -> str:
     - str: The basic authentication token.
     """
     logger.info("Calculating Cisco ISE API Basic Auth Token")
-    token = base64.b64encode(f"{uname}:{pwd}".encode('utf-8')).decode("ascii")
+    token = base64.b64encode(f"{uname}:{pwd}".encode('utf-8')).decode("utf-8")
     return f"Basic {token}"
 
 
@@ -97,42 +97,98 @@ def initialize_credentials():
     print("--- GP Session Limiting Middleware ---")
     print(f"")
     config = get_config()
+    modified = False
+
+    # Set API Username and Password
+    # TODO: Add support for API Key
+
     # Generate FW Api Key
-    fw_api_key = None
-    while not fw_api_key:
-        fw_username = input("Please Enter GP Gateway NGFW Username: ")
-        fw_password = getpass.getpass(
-            "Please Enter GP Gateway NGFW Password: ")
-        fw_api_key = fw_key(config['fw_ip'], fw_username, fw_password)
-        if not fw_api_key:
-            print("FW API Key Not Generated. Please check connection and credentials. Try again or press Ctrl+C to exit.")
+    flag = input("Do you want to generate FW API Key? (y/n)")
+    while True:
+        if flag.strip()[0] == "y" or flag.strip() == "Y":
+            fw_api_key = None
+            while not fw_api_key:
+                fw_username = input("Please Enter GP Gateway NGFW Username: ")
+                fw_password = getpass.getpass(
+                    "Please Enter GP Gateway NGFW Password: ")
+                fw_api_key = fw_key(config['fw_ip'], fw_username, fw_password)
+                if not fw_api_key:
+                    print(
+                        "FW API Key Not Generated. Please check connection and credentials. Try again or press Ctrl+C to exit.")
+                else:
+                    config['fw_credentials']['api_key'] = fw_api_key
+                    if 'username' in config:
+                        config['fw_credentials'].pop('username')
+                    if 'password' in config:
+                        config['fw_credentials'].pop('password')
+                    print("FW API Key Generated Successfully.")
+                    modified = True
+            break
+        elif flag.strip()[0] == "n" or flag.strip() == "N":
+            print(
+                "Skipping FW API Key Generation. Existing key in config (if present) will be used.")
+            break
+        else:
+            flag = input("Please enter y or n: ")
 
-    config['fw_credentials']['api_key'] = fw_api_key
-    if 'username' in config:
-        config['fw_credentials'].pop('username')
-    if 'password' in config:
-        config['fw_credentials'].pop('password')
-    print("FW API Key Generated Successfully.")
+    # Generate ISE Token
+    flag = input("Do you want to generate ISE Token? (y/n)")
+    while True:
+        if flag.strip()[0] == 'y' or flag.strip() == 'Y':
+            ise_username = input("Please Enter ISE Username: ")
+            ise_password = getpass.getpass("Please Enter ISE Password: ")
+            ise_token = ise_auth(ise_username, ise_password)
+            config['ise_credentials']['token'] = ise_token
+            if 'username' in config['ise_credentials']:
+                config['ise_credentials'].pop('username')
+            if 'password' in config['ise_credentials']:
+                config['ise_credentials'].pop('password')
+            print("ISE Token Generated Successfully.")
+            modified = True
+            break
+        elif flag.strip()[0] == 'n' or flag.strip() == 'N':
+            print(
+                "Skipping ISE Token Generation. Existing token in config (if present) will be used.")
+            break
+        else:
+            flag = input("Please enter y or n: ")
 
-    ise_username = input("Please Enter ISE Username: ")
-    ise_password = getpass.getpass("Please Enter ISE Password: ")
+    # Set Email Sender Credentials
+    flag = input("Do you want to set Email Sender Credentials? (y/n)")
+    while True:
+        if flag.strip()[0] == 'y' or flag.strip() == 'Y':
+            print(
+                "If your mail sender username is different from sender email please provide it separately.")
+            print("e.g. Domain\\Username for username@domain.com")
+            mail_from = input("Please Enter Sender Email Address: ")
+            mail_user = input(
+                f"Please Enter Sender Email Username (default: {mail_from}): ")
+            if not mail_user:
+                mail_user = mail_from
+            mail_password = getpass.getpass(
+                "Please Enter Sender Email Password: ")
+            config['mail_from'] = mail_from
+            config['mail_user'] = mail_user
+            config['mail_password'] = base64.b64encode(
+                mail_password.encode('utf-8')).decode("ascii")
+            modified = True
+            break
+        elif flag.strip()[0] == 'n' or flag.strip() == 'N':
+            print("Skipping Email Sender Credentials Setup. Existing credentials in config (if present) will be used.")
+            break
+        else:
+            flag = input("Please enter y or n: ")
 
-    ise_token = ise_auth(ise_username, ise_password)
-    config['ise_credentials']['token'] = ise_token
-    if 'username' in config['ise_credentials']:
-        config['ise_credentials'].pop('username')
-    if 'password' in config['ise_credentials']:
-        config['ise_credentials'].pop('password')
-
-    print("ISE Token Generated Successfully.")
-    try:
-        save_config_yaml(config)
-    except Exception:
-        print("Couldn't save config file. Please check permissions and try again.")
-        exit(1)
-    else:
-        print("Config file saved successfully. Please rerun the script if new credentials need to be used.")
-        exit(0)
+    if modified:
+        try:
+            save_config_yaml(config)
+        except Exception:
+            print("Couldn't save config file. Please check permissions and try again.")
+            exit(1)
+        else:
+            print(
+                "Config file saved successfully. Please rerun the script if new credentials need to be used.")
+            exit(0)
 
 
 if __name__ == '__main__':
