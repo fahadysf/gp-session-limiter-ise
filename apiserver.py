@@ -5,13 +5,17 @@ import json
 import datetime
 import os
 from config import get_config
-from fastapi import Request, FastAPI
+from fastapi import Request, Depends, FastAPI, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from logger import init_logging, logger
 import mailsender
 
 app = FastAPI(debug=False)
 # Setup Logging config
 init_logging()
+# Setup Security
+security = HTTPBasic()
+
 # Setup CSV Logging
 
 
@@ -50,6 +54,26 @@ def shutdown_event():
 async def exit_app():
     loop = asyncio.get_running_loop()
     loop.stop()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    current_username_bytes = credentials.username.encode("utf8")
+    correct_username_bytes = b"stanleyjobson"
+    is_correct_username = secrets.compare_digest(
+        current_username_bytes, correct_username_bytes
+    )
+    current_password_bytes = credentials.password.encode("utf8")
+    correct_password_bytes = b"swordfish"
+    is_correct_password = secrets.compare_digest(
+        current_password_bytes, correct_password_bytes
+    )
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 
 @app.get("/")
@@ -223,6 +247,7 @@ async def sync_user_request(username: str, request: Request) -> dict:
             if config['email_enabled']:
                 mailsender.send_mail(
                     config['smtp_server'],
+                    config['mail_user'],
                     config['mail_from'],
                     config['mail_to'],
                     config['mail_password'],

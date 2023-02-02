@@ -1,4 +1,5 @@
 import smtplib
+import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -8,6 +9,7 @@ init_logging()
 
 
 def send_mail(mail_srv_add,
+              mail_user,
               mail_from,
               mail_to,
               mail_password,
@@ -45,11 +47,15 @@ def send_mail(mail_srv_add,
 
     try:
         logger.info(
-            f"Email: Request Account Login for {mail_from} on Server {mail_srv_add}")
-        mail_server.login(mail_from, mail_password)
+            f"Email: Request Account Login for {mail_user} on Server {mail_srv_add}")
+        mail_server.login(mail_user, base64.b64decode(
+            mail_password.encode('utf-8')).decode('utf-8'))
     except Exception as e:
         logger.error(
-            r"Email: Account Login Failure for {mail_from}, Credentials Error")
+            f"Email: Account Login Failure for {mail_from}, Credentials Error")
+        logger.debug(
+            f"Password: {base64.b64decode(mail_password.encode('utf-8')).decode('utf-8').strip()}")
+        logger.debug(f"Error: {str(e)}")
         logger.error(f"Email: Skip Sending Email to {mail_to}")
         return False
     else:
