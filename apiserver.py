@@ -7,6 +7,7 @@ import os
 from config import get_config
 from fastapi import Request, FastAPI
 from logger import init_logging, logger
+import mailsender
 
 app = FastAPI(debug=False)
 # Setup Logging config
@@ -202,18 +203,40 @@ async def sync_user_request(username: str, request: Request) -> dict:
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
             csvlogfile = csv_log()
+            eventdate = datetime.datetime.now().strftime("%b.%d.%Y")
+            eventtime = datetime.datetime.now().strftime("%H:%M:%S")
+            oldsession = user['customAttributes']
+            oldsession['PaloAlto-Client-Region'] = gpusers[user['name']
+                                                           ][0]['Raw-Data']['source-region']
             csv_entry = f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")},' \
                 + f'{user["name"]},' \
-                + f'{datetime.datetime.now().strftime("%b.%d.%Y")},' \
-                + f'{datetime.datetime.now().strftime("%H:%M:%S")},' \
-                + f'{user["customAttributes"]["PaloAlto-Client-Hostname"]},' \
-                + f'{user["customAttributes"]["PaloAlto-Client-OS"]},' \
-                + f'{user["customAttributes"]["PaloAlto-Client-Source-IP"]},' \
-                + f'{gpusers[user["name"]][0]["Raw-Data"]["source-region"]},' \
+                + f'{eventdate},' \
+                + f'{eventtime},' \
+                + f'{oldsession["PaloAlto-Client-Hostname"]},' \
+                + f'{oldsession["PaloAlto-Client-OS"]},' \
+                + f'{oldsession["PaloAlto-Client-Source-IP"]},' \
+                + f'{oldsession["PaloAlto-Client-Region"]},' \
                 + f'{attributes["PaloAlto-Client-Hostname"]},' \
                 + f'{attributes["PaloAlto-Client-OS"]},' \
                 + f'{attributes["PaloAlto-Client-Source-IP"]},' \
                 + f'{attributes["PaloAlto-Client-Region"]}'
+            if config['email_enabled']:
+                mailsender.send_mail(
+                    config['smtp_server'],
+                    config['mail_from'],
+                    config['mail_to'],
+                    config['mail_password'],
+                    config['smtp_port'],
+                    f"GP Duplicate Loging Attempt - User: {user['name']}",
+                    mailsender.mail_html_body({
+                        'username': user['name'],
+                        'date': eventdate,
+                        'time': eventtime,
+                        'oldsession': user['customAttributes'],
+                        'newsession': attributes
+                    }),
+                    mail_srv_typ=config['smtp_type']
+                )
             with open(csvlogfile, "a+") as csv_file:
                 csv_file.write(csv_entry + "\n")
     return user
