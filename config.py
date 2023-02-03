@@ -1,4 +1,5 @@
 import os
+import stat
 import base64
 import requests
 import time
@@ -92,7 +93,7 @@ def save_config_yaml(config_dict: dict, config_file: str = "config.yaml"):
         raise
 
 
-def initialize_credentials():
+def initialize_credentials(config_file: str = "config.yaml"):
     import getpass
     print("--- GP Session Limiting Middleware ---")
     print(f"")
@@ -182,8 +183,10 @@ def initialize_credentials():
     if modified:
         try:
             save_config_yaml(config)
-        except Exception:
+            os.chmod(config_file, 0o600)
+        except Exception as e:
             print("Couldn't save config file. Please check permissions and try again.")
+            print(str(e))
             exit(1)
         else:
             print(
