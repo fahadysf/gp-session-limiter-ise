@@ -65,7 +65,7 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     is_correct_username = secrets.compare_digest(
         current_username_bytes, correct_username_bytes
     )
-    current_password = credentials.password
+    current_password = credentials.password.strip()
     hashedpass = config['api_password']
     ph = PasswordHasher()
     try:
@@ -75,6 +75,8 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     if not (is_correct_username and is_correct_password):
         logger.warning(
             'Auth Failed. Incorrect API username or password entered.')
+        logger.debug(
+            f"Username: {credentials.username} Password: {credentials.password}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect API username or password",
