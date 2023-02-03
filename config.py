@@ -1,6 +1,8 @@
 import os
-import stat
 import base64
+from argon2 import PasswordHasher
+import base64
+
 import requests
 import time
 import yaml
@@ -95,18 +97,40 @@ def save_config_yaml(config_dict: dict, config_file: str = "config.yaml"):
 
 def initialize_credentials(config_file: str = "config.yaml"):
     import getpass
-    print("--- GP Session Limiting Middleware ---")
-    print(f"")
+    config = get_config(config_file)
+    print("--- GP Session Limiting Middleware Config Tool ---\n")
+    print(f"Config File:\t{config_file}")
+    print(f"Firewall IP:\t{config['fw_ip']}")
+    print(f"ISE IP:\t\t{config['ise_api_ip']}")
+    print(f"SMTP Server:\t{config['smtp_server']}\n")
     config = get_config()
     modified = False
 
     # Set API Username and Password
     # TODO: Add support for API Key
+    flag = input(
+        "Do you want to create or reset credentials for the Middleware API? (y/n)")
+    while True:
+        if len(flag.strip()) and (flag.strip()[0] == "y" or flag.strip() == "Y"):
+            username = input("Please Enter Middleware API Username: ")
+            password = getpass.getpass(
+                'Please Enter Middleware API Password: ')
+            saltedhash = PasswordHasher().hash(password)
+            config['api_user'] = username
+            config['api_password'] = saltedhash
+            modified = True
+            break
+        elif flag.strip() == '' or flag.strip()[0] == 'n' or flag.strip() == 'N':
+            print(
+                "Skipping API Credentials setup. Existing user/password in config file will be used (if exists).")
+            break
+        else:
+            flag = input("Please enter y or n: ")
 
     # Generate FW Api Key
     flag = input("Do you want to generate FW API Key? (y/n)")
     while True:
-        if flag.strip()[0] == "y" or flag.strip() == "Y":
+        if len(flag.strip()) and flag.strip()[0] == "y" or flag.strip() == "Y":
             fw_api_key = None
             while not fw_api_key:
                 fw_username = input("Please Enter GP Gateway NGFW Username: ")
@@ -125,7 +149,7 @@ def initialize_credentials(config_file: str = "config.yaml"):
                     print("FW API Key Generated Successfully.")
                     modified = True
             break
-        elif flag.strip()[0] == "n" or flag.strip() == "N":
+        elif flag.strip() == '' or flag.strip()[0] == "n" or flag.strip() == "N":
             print(
                 "Skipping FW API Key Generation. Existing key in config (if present) will be used.")
             break
@@ -135,7 +159,7 @@ def initialize_credentials(config_file: str = "config.yaml"):
     # Generate ISE Token
     flag = input("Do you want to generate ISE Token? (y/n)")
     while True:
-        if flag.strip()[0] == 'y' or flag.strip() == 'Y':
+        if len(flag.strip()) and flag.strip()[0] == 'y' or flag.strip() == 'Y':
             ise_username = input("Please Enter ISE Username: ")
             ise_password = getpass.getpass("Please Enter ISE Password: ")
             ise_token = ise_auth(ise_username, ise_password)
@@ -147,7 +171,7 @@ def initialize_credentials(config_file: str = "config.yaml"):
             print("ISE Token Generated Successfully.")
             modified = True
             break
-        elif flag.strip()[0] == 'n' or flag.strip() == 'N':
+        elif flag.strip() == '' or flag.strip()[0] == 'n' or flag.strip() == 'N':
             print(
                 "Skipping ISE Token Generation. Existing token in config (if present) will be used.")
             break
@@ -157,7 +181,7 @@ def initialize_credentials(config_file: str = "config.yaml"):
     # Set Email Sender Credentials
     flag = input("Do you want to set Email Sender Credentials? (y/n)")
     while True:
-        if flag.strip()[0] == 'y' or flag.strip() == 'Y':
+        if len(flag.strip()) and flag.strip()[0] == 'y' or flag.strip() == 'Y':
             print(
                 "If your mail sender username is different from sender email please provide it separately.")
             print("e.g. Domain\\Username for username@domain.com")
@@ -174,7 +198,7 @@ def initialize_credentials(config_file: str = "config.yaml"):
                 mail_password.encode('utf-8')).decode("ascii")
             modified = True
             break
-        elif flag.strip()[0] == 'n' or flag.strip() == 'N':
+        elif flag.strip() == '' or flag.strip()[0] == 'n' or flag.strip() == 'N':
             print("Skipping Email Sender Credentials Setup. Existing credentials in config (if present) will be used.")
             break
         else:
@@ -195,4 +219,8 @@ def initialize_credentials(config_file: str = "config.yaml"):
 
 
 if __name__ == '__main__':
-    initialize_credentials()
+    try:
+        initialize_credentials()
+    except KeyboardInterrupt:
+        print("\nCtrl+C pressed. Exiting...")
+        exit(1)

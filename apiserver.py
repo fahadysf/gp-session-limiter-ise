@@ -4,6 +4,8 @@ import pan_fw
 import json
 import datetime
 import os
+import secrets
+from argon2 import PasswordHasher
 from config import get_config
 from fastapi import Request, Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -56,29 +58,37 @@ async def exit_app():
     loop.stop()
 
 
-def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    global config
     current_username_bytes = credentials.username.encode("utf8")
-    correct_username_bytes = b"stanleyjobson"
+    correct_username_bytes = config['api_user'].encode("utf8")
     is_correct_username = secrets.compare_digest(
         current_username_bytes, correct_username_bytes
     )
-    current_password_bytes = credentials.password.encode("utf8")
-    correct_password_bytes = b"swordfish"
-    is_correct_password = secrets.compare_digest(
-        current_password_bytes, correct_password_bytes
-    )
+    current_password = credentials.password
+    hashedpass = config['api_password']
+    ph = PasswordHasher()
+    try:
+        is_correct_password = ph.verify(hashedpass, current_password)
+    except Exception as e:
+        is_correct_password = False
     if not (is_correct_username and is_correct_password):
+        logger.warning(
+            'Auth Failed. Incorrect API username or password entered.')
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect API username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    return credentials.username
+    return is_correct_password
 
 
 @app.get("/")
-async def root():
-    return {"message": "Please use the /connected and /disconnected endpoints."}
+async def root(auth_result: bool = Depends(check_auth)):
+    return {
+        "authenticated": auth_result,
+        "message": "Please use the /connected and /disconnected endpoints."
+    }
 
 
 @app.get("/health")
@@ -88,29 +98,30 @@ async def root(request: Request) -> dict:
 
 
 @app.post("/connected")
-async def connected_event(request: Request) -> dict:
+async def connected_event(request: Request, auth_result: bool = Depends(check_auth)) -> dict:
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     try:
         data = await request.json()
         logger.debug(f"POST Data Received: {json.dumps(data, indent=2)}")
+        if 'customAttributes' in data['InternalUser'].keys():
+            res = update_user(data['InternalUser']['name'],
+                              data['InternalUser']['customAttributes'])
+        else:
+            res = update_user(data['InternalUser']['name'], {
+                'PaloAlto-GlobalProtect-Client-Version': "Unknown"})
+        logger.warning(
+            f"User {data['InternalUser']['name']} connected to GP. Attributes updated in ISE.")
+
     except Exception:
         logger.error(f"Malformed request received for /connected endpoint.")
         logger.debug(f"Request: {await request.body()}")
         return
-    logger.info(json.dumps(data, indent=2))
-    if 'customAttributes' in data['InternalUser'].keys():
-        res = update_user(data['InternalUser']['name'],
-                          data['InternalUser']['customAttributes'])
-    else:
-        res = update_user(data['InternalUser']['name'], {
-            'PaloAlto-GlobalProtect-Client-Version': "Unknown"})
-    logger.warning(
-        f"User {data['InternalUser']['name']} connected to GP. Attributes updated in ISE.")
+    logger.debug(f"POST Data: {json.dumps(data, indent=2)}")
     return res.json()
 
 
 @ app.post("/disconnected")
-async def disconnected_event(request: Request) -> dict:
+async def disconnected_event(request: Request, auth_result: str = Depends(check_auth)) -> dict:
     global config
     global fw_api_key
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
@@ -142,7 +153,7 @@ async def disconnected_event(request: Request) -> dict:
 
 
 @ app.get('/debug/getusersfromise')
-async def get_users_ise(request: Request) -> dict:
+async def get_users_ise(request: Request, auth_result: str = Depends(check_auth)) -> dict:
     """
     Retrieve all users from ISE and cache them.
 
@@ -160,7 +171,7 @@ async def get_users_ise(request: Request) -> dict:
 
 
 @ app.get('/debug/getcachedusers')
-async def get_users_cache(request: Request) -> dict:
+async def get_users_cache(request: Request, auth_result: str = Depends(check_auth)) -> dict:
     """
     Retrieve all users from cache.
 
@@ -176,7 +187,7 @@ async def get_users_cache(request: Request) -> dict:
 
 
 @ app.get('/sync')
-async def sync_request(request: Request) -> dict:
+async def sync_request(request: Request, auth_result: str = Depends(check_auth)) -> dict:
     """
     Sync the ISE users with the connected state from the firewall.
 
@@ -193,7 +204,7 @@ async def sync_request(request: Request) -> dict:
 
 @ app.get('/syncuser/{username}')
 @ app.post('/syncuser/{username}')
-async def sync_user_request(username: str, request: Request) -> dict:
+async def sync_user_request(username: str, request: Request, auth_result: str = Depends(check_auth)) -> dict:
     """
     Sync a single user with the connected state from the firewall.
 
@@ -204,6 +215,11 @@ async def sync_user_request(username: str, request: Request) -> dict:
     Returns:
     dict: A dictionary containing the user data after the update.
     """
+    logger.info(f"{request.client.host} - {request.method} - {request.url}")
+    if not auth_result:
+        logger.warning(
+            f"Authentication Failed for /syncuser/{username} endpoint.")
+        return {"message": "Authentication Failed."}
     try:
         data = await request.json()
         logger.debug(f"POST Data Received: {json.dumps(data, indent=2)}")
