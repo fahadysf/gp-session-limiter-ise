@@ -223,7 +223,7 @@ async def sync_user_request(username: str, request: Request) -> dict:
         logger.info(f"User {user['name']} synced with connected state on ISE")
         gpusers = sync_gp_session_state(config)
         attributes = data['InternalUser']['customAttributes']
-        if attributes != user['customAttributes']:
+        if attributes != user['customAttributes'] and user['name'] in gpusers.keys():
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
             csvlogfile = csv_log()
