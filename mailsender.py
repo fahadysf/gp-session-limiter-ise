@@ -44,23 +44,23 @@ def send_mail(mail_srv_add,
                 f"Email: TLS/SSL Connection Established with Mail {mail_srv_add}:{mail_srv_port}")
     elif mail_srv_typ == "cleartext":
         logger.info(f"Email: Clear-Text SMTP  Email Option Selected")
-
-    try:
-        logger.info(
-            f"Email: Request Account Login for {mail_user} on Server {mail_srv_add}")
-        mail_server.login(mail_user, base64.b64decode(
-            mail_password.encode('utf-8')).decode('utf-8'))
-    except Exception as e:
-        logger.error(
-            f"Email: Account Login Failure for {mail_from}, Credentials Error")
-        logger.debug(
-            f"Password: {base64.b64decode(mail_password.encode('utf-8')).decode('utf-8').strip()}")
-        logger.debug(f"Error: {str(e)}")
-        logger.error(f"Email: Skip Sending Email to {mail_to}")
-        return False
-    else:
-        logger.info(
-            f"Email: Account Login Success for {mail_from} on Server {mail_srv_add}")
+    if mail_password and len(mail_password.strip()):
+        try:
+            logger.info(
+                f"Email: Request Account Login for {mail_user} on Server {mail_srv_add}")
+            mail_server.login(mail_user, base64.b64decode(
+                mail_password.encode('utf-8')).decode('utf-8'))
+        except Exception as e:
+            logger.error(
+                f"Email: Account Login Failure for {mail_from}, Credentials Error")
+            logger.debug(
+                f"Password: {base64.b64decode(mail_password.encode('utf-8')).decode('utf-8').strip()}")
+            logger.debug(f"Error: {str(e)}")
+            logger.error(f"Email: Skip Sending Email to {mail_to}")
+            return False
+        else:
+            logger.info(
+                f"Email: Account Login Success for {mail_from} on Server {mail_srv_add}")
     try:
         email = MIMEMultipart('alternative')
         email['Subject'] = mail_subject
