@@ -49,8 +49,16 @@ if fw_api_key is None:
 
 
 @app.on_event('shutdown')
-def shutdown_event():
+async def shutdown_event():
     print('Shutting down...!')
+
+
+@app.on_event('startup')
+async def startup_event():
+    global config
+    logger.info("Starting GP API Server: Performing initial sync.")
+    syncresults = sync_gp_session_state(config, initial=True)
+    logger.debug(f"Sync Results: {syncresults}")
 
 
 async def exit_app():
@@ -319,7 +327,8 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
     """
     global ise_token
     global fw_api_key
-    gp_connected_user_data = pan_fw.fw_gp_ext(config['fw_ip'], fw_api_key)
+    gp_connected_user_data = pan_fw.fw_gp_ext(
+        config['fw_ip'], fw_api_key, ignore_cache=initial)
     ise_gp_connected_users = []
     for user in cisco_ise.all_users:
         if 'customAttributes' in cisco_ise.all_users[user].keys():
@@ -377,7 +386,3 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                 logger.warning(
                     f"Updated user {user} on ISE to GP Non-connected state")
     return gp_connected_user_data
-
-
-# Perform an initial sync
-sync_gp_session_state(config, initial=True)

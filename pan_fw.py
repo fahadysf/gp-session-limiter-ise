@@ -17,7 +17,7 @@ logger.debug("Debug Logging Enabled")
 requests.packages.urllib3.disable_warnings()
 
 
-def fw_gp_ext(fw_ip, fw_key):
+def fw_gp_ext(fw_ip, fw_key, ignore_cache: bool = False):
 
     global fw_data
     api_url = f"https://{fw_ip}/api"
@@ -26,7 +26,7 @@ def fw_gp_ext(fw_ip, fw_key):
         "type": "op",
         "cmd": "<show><global-protect-gateway><current-user/></global-protect-gateway></show>"
     }
-    if "fw_gp_sessions" in fw_data.keys() and fw_data["fw_gp_sessions_timestamp"] > time.time() - config['fw_gp_sessions_ttl']:
+    if not ignore_cache and ("fw_gp_sessions" in fw_data.keys() and fw_data["fw_gp_sessions_timestamp"] > time.time() - config['fw_gp_sessions_ttl']):
         logger.debug(
             f"FW GP Sessions data cache hit, freshness: {(time.time() - fw_data['fw_gp_sessions_timestamp']):.2f}s")
         gp_connected_user_data = fw_data["fw_gp_sessions"]
