@@ -237,7 +237,6 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
         logger.error(f"Malformed request received for /syncuser/{username}")
         logger.debug(f"Request: {await request.body()}")
         return
-    logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global config
     global ise_token
     user = cisco_ise.ise_enrich_user(
