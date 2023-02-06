@@ -335,6 +335,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
             if '.' in cisco_ise.all_users[user]['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
                 ise_gp_connected_users.append(user)
     for user in gp_connected_user_data:
+        u_dict = gp_connected_user_data[user][0]
         if initial or (user not in ise_gp_connected_users):
             cache_user = cisco_ise.ise_enrich_user(
                 config['ise_api_ip'],
@@ -345,7 +346,6 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                     'ISE user details not found. Please ensure ISE connectivity and check credentials')
                 return None
             if '.' not in cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
-                u_dict = gp_connected_user_data[user][0]
                 custom_attributes = {
                     "PaloAlto-Client-Hostname": u_dict['Client-Hostname'],
                     "PaloAlto-Client-OS": u_dict['Client-OS'],
@@ -364,6 +364,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                     raise
                 logger.warning(
                     f"Updated user {u_dict['Username']} on ISE to GP Connected state")
+
     for user in ise_gp_connected_users:
         if user not in gp_connected_user_data.keys():
             custom_attributes = {
@@ -385,4 +386,26 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
             else:
                 logger.warning(
                     f"Updated user {user} on ISE to GP Non-connected state")
+        else:
+            u_dict = gp_connected_user_data[user][0]
+            cache_user = cisco_ise.all_users[user]
+            if u_dict['Client-Hostname'] != cache_user['customAttributes']['PaloAlto-Client-Hostname'] or u_dict['Client-OS'] != cache_user['customAttributes']['PaloAlto-Client-OS'] or u_dict['Client-Source-IP'] != cache_user['customAttributes']['PaloAlto-Client-Source-IP']:
+                custom_attributes = {
+                    "PaloAlto-Client-Hostname": u_dict['Client-Hostname'],
+                    "PaloAlto-Client-OS": u_dict['Client-OS'],
+                    "PaloAlto-Client-Source-IP": u_dict['Client-Source-IP'],
+                    "PaloAlto-GlobalProtect-Client-Version": cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']
+                }
+                try:
+                    cisco_ise.ise_update_user(
+                        config['ise_api_ip'],
+                        ise_token,
+                        u_dict['Username'],
+                        custom_attributes=custom_attributes)
+                except Exception:
+                    logger.error(
+                        f"Error updating user {u_dict['Username']} on ISE")
+                    raise
+                logger.warning(
+                    f"Updated user {u_dict['Username']} on ISE to GP Connected state with existing session details.")
     return gp_connected_user_data
