@@ -22,6 +22,15 @@ def do_healthcheck(middleware_ip, middleware_port):
     return req
 
 
+def do_fw_to_mw_healthcheck(fw_ip, fw_api_key):
+    """
+    This function checks the health of the middleware.
+    """
+    url = "https://" + fw_ip + "/api/?" + """type=op&cmd=<show>
+    <system><health><monitor><all></all></monitor></health></system></show>&key=" + fw_api_key
+    req = request.urlopen(url)
+    return req
+
 def get_req(url: str, method: str = "GET") -> request.Request:
     req = request.Request(url)
     req.add_header("Accept", "application/json")
