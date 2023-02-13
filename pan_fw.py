@@ -17,7 +17,7 @@ logger.debug("Debug Logging Enabled")
 requests.packages.urllib3.disable_warnings()
 
 
-def get_active_fw(fw_ip: str, fw2_ip: str, api_key: str) -> str:
+def get_active_fw(fw_ip: str, fw_ip2: str, api_key: str) -> str:
     """
     Determine the HA State and return the Active Firewall IP
     """
@@ -49,7 +49,7 @@ def get_active_fw(fw_ip: str, fw2_ip: str, api_key: str) -> str:
     except Exception as e:
         print(f"Error for FW1: {e}")
         fw1_result = 'error'
-        api_url = f"https://{fw2_ip}/api"
+        api_url = f"https://{fw_ip2}/api"
         api_prm = {
             "key": api_key,
             "type": "op",
@@ -65,14 +65,14 @@ def get_active_fw(fw_ip: str, fw2_ip: str, api_key: str) -> str:
             fw2_result = xmltodict.parse(response.text)["response"]["result"]
             if fw2_result['enabled'] == 'yes':
                 if fw2_result['group']['local-info']['state'] == 'active':
-                    active_fw = fw2_ip
+                    active_fw = fw_ip2
                 elif fw2_result['group']['peer-info']['state'] == 'active':
                     active_fw = fw_ip
                 else:
                     active_fw = None
                     logger.error("HA State Unknown based on FW2")
             elif fw2_result['enabled'] == 'no':
-                active_fw = fw2_ip
+                active_fw = fw_ip2
         except Exception as e:
             print(f"Error for FW2: {e}")
             active_fw = None

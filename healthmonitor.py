@@ -2,10 +2,22 @@
 import json
 import ssl
 from urllib import request
+import paramiko
+import time
+
+# Disable SSL Verification
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
 
 ISE_IP = "192.0.0.22"
 ISE_TOKEN = "Basic ZnlvdXN1ZjpGYWhhZEAxMjM="
 ISE_API_PORT = "9060"
+FW_IP1 = "192.0.0.33"
+FW_IP2 = "192.0.0.34"
+FW_USER = "fw_username"
+FW_PASS = "--FW--PASS--HEERE--"
+FW_HEALTHCHECK_PROFILE = "gptool-health-check"
 MIDDLEWARE_IP = "192.0.0.30"
 MIDDLEWARE_PORT = "8000"
 FW_DEVICE_NAMES = ["PAN-NGFW-VM-33"]
@@ -21,15 +33,6 @@ def do_healthcheck(middleware_ip, middleware_port):
     req = request.urlopen(url)
     return req
 
-
-def do_fw_to_mw_healthcheck(fw_ip, fw_api_key):
-    """
-    This function checks the health of the middleware.
-    """
-    url = "https://" + fw_ip + "/api/?" + """type=op&cmd=<show>
-    <system><health><monitor><all></all></monitor></health></system></show>&key=" + fw_api_key
-    req = request.urlopen(url)
-    return req
 
 def get_req(url: str, method: str = "GET") -> request.Request:
     req = request.Request(url)
@@ -106,18 +109,82 @@ def set_ise_group(ise_ip, ise_api_port, device_name, group_name):
         return None
 
 
+def check_status_fw_ssh(fw_ip, fw_user, fw_pass, profile):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh.connect(FW_IP1, 22, FW_USER, FW_PASS)
+        remote_conn = ssh.invoke_shell()
+        out = ""
+        while '>' not in out:
+            while not remote_conn.recv_ready():
+                time.sleep(0.1)
+            out += remote_conn.recv(1000).decode("ascii")
+        remote_conn.send(
+            f"test http-profile name {profile} type globalprotect \n\n")
+        out = ""
+        while not (('failed' in out.lower()) or ('success' in out.lower())):
+            while not remote_conn.recv_ready():
+                time.sleep(0.1)
+            out += remote_conn.recv(10000).decode("ascii")
+        out = "".join([s for s in out.splitlines(True) if (
+            'success' in s.lower() or 'fail' in s.lower())])
+        print(f"{out}")
+        if "success" in out.lower():
+            failure_level = 0
+            print("FW Reachability to middleware: Success")
+        elif "failed" in out.lower():
+            print("FW Reachability to middleware: Failure.")
+            failure_level = 1
+        ssh.close()
+        return failure_level
+    except Exception as e:
+        raise
+
+
 if __name__ == "__main__":
     try:
         r = do_healthcheck(MIDDLEWARE_IP, MIDDLEWARE_PORT)
     except Exception as e:
         r = None
+    failure_level = 0
     if r is not None and r.getcode() == 200:
+        failure_level = 0
+        print("Direct Middleware Healthcheck: Success")
+    else:
+        failure_level = 1
+
+    # Do Firewall to Middleware Healthcheck if MW is up
+    if failure_level == 0:
+        try:
+            failure_level = check_status_fw_ssh(
+                FW_IP1, FW_USER, FW_PASS, FW_HEALTHCHECK_PROFILE)
+        except Exception:
+            try:
+                failure_level = check_status_fw_ssh(
+                    FW_IP2, FW_USER, FW_PASS, FW_HEALTHCHECK_PROFILE)
+            except Exception:
+                failure_level = 1
+
+    if failure_level == 0:
         print("Middleware is healthy. GP Session enforcement enabled.")
         for device_name in FW_DEVICE_NAMES:
-            set_ise_group(ISE_IP, ISE_API_PORT,
-                          device_name, ENFORCING_GROUP)
-    else:
+            try:
+                set_ise_group(ISE_IP, ISE_API_PORT,
+                              device_name, ENFORCING_GROUP)
+            except Exception:
+                failure_level = 2
+    elif failure_level == 1:
         print("Middleware is not healthy. GP Session enforcement disabled.")
         for device_name in FW_DEVICE_NAMES:
-            set_ise_group(ISE_IP, ISE_API_PORT,
-                          device_name, NON_ENFORCING_GROUP)
+            try:
+                set_ise_group(ISE_IP, ISE_API_PORT,
+                              device_name, NON_ENFORCING_GROUP)
+            except Exception:
+                failure_level = 2
+
+    if failure_level == 2:
+        print("Failed to set device group in ISE. ISE may not be reachable.")
+        for device_name in FW_DEVICE_NAMES:
+            print(
+                f"Please change the device group manually in ISE to {NON_ENFORCING_GROUP} for {device_name}")

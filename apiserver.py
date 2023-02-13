@@ -57,8 +57,11 @@ async def shutdown_event():
 async def startup_event():
     global config
     logger.info("Starting GP API Server: Performing initial sync.")
-    syncresults = sync_gp_session_state(config, initial=True)
-    logger.debug(f"Sync Results: {syncresults}")
+    try:
+        syncresults = sync_gp_session_state(config, initial=True)
+        logger.debug(f"Sync Results: {syncresults}")
+    except Exception:
+        exit(1)
 
 
 async def exit_app():
@@ -138,6 +141,14 @@ async def disconnected_event(request: Request, auth_result: str = Depends(check_
     data = await request.json()
     fw_ip = pan_fw.get_active_fw(
         config['fw_ip'], config['fw_ha_ip'], fw_api_key)
+    if fw_ip is None:
+        logger.error(
+            "Unable to determine active PAN-OS device. Please check HA status and API key.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to determine active PAN-OS device. Please check HA status and API key.",
+            headers={"WWW-Authenticate": "Basic"},
+        )
     gp_connected_user_data = pan_fw.fw_gp_ext(fw_ip, fw_api_key)
     if data['InternalUser']['name'] in gp_connected_user_data.keys():
         if len(gp_connected_user_data[data['InternalUser']['name']]) > 0:
@@ -333,6 +344,10 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
     global fw_api_key
     fw_ip = pan_fw.get_active_fw(
         config['fw_ip'], config['fw_ha_ip'], fw_api_key)
+    if fw_ip is None:
+        logger.error(
+            "No active firewall found. Check firewall HA status and API key.")
+        raise Exception("No active and reachable firewall found.")
     gp_connected_user_data = pan_fw.fw_gp_ext(
         fw_ip, fw_api_key, ignore_cache=initial)
     ise_gp_connected_users = []
