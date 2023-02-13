@@ -8,6 +8,7 @@ api_password: # Automatically filled by config tool
 # TTL for GP Session Data Cache (Default 30s)
 fw_gp_sessions_ttl: 30
 fw_ip: 192.168.1.10
+fw_ha_ip: 192.168.1.11
 fw_credentials:
   api_key:  
 

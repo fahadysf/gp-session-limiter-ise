@@ -17,6 +17,69 @@ logger.debug("Debug Logging Enabled")
 requests.packages.urllib3.disable_warnings()
 
 
+def get_active_fw(fw_ip: str, fw2_ip: str, api_key: str) -> str:
+    """
+    Determine the HA State and return the Active Firewall IP
+    """
+    try:
+        api_url = f"https://{fw_ip}/api"
+        api_prm = {
+            "key": api_key,
+            "type": "op",
+            "cmd": "<show><high-availability><state/></high-availability></show>",
+        }
+        response = requests.request(
+            "GET",
+            url=api_url,
+            params=api_prm,
+            verify=False,
+            timeout=10)
+        fw1_result = xmltodict.parse(response.text)["response"]["result"]
+        if fw1_result['enabled'] == 'yes':
+            if fw1_result['group']['local-info']['state'] == 'active':
+                active_fw = fw_ip
+            elif fw1_result['group']['peer-info']['state'] == 'active':
+                active_fw = fw_ip2
+            else:
+                logger.error("HA State Unknown based on FW1")
+                raise Exception("HA State Unknown based on FW1")
+        elif fw1_result['enabled'] == 'no':
+            logger.debug(f"HA Disabled on FW1: {fw_ip}")
+            active_fw = fw_ip
+    except Exception as e:
+        print(f"Error for FW1: {e}")
+        fw1_result = 'error'
+        api_url = f"https://{fw2_ip}/api"
+        api_prm = {
+            "key": api_key,
+            "type": "op",
+            "cmd": "<show><high-availability><state/></high-availability></show>",
+        }
+        try:
+            response = requests.request(
+                "GET",
+                url=api_url,
+                params=api_prm,
+                verify=False,
+                timeout=10)
+            fw2_result = xmltodict.parse(response.text)["response"]["result"]
+            if fw2_result['enabled'] == 'yes':
+                if fw2_result['group']['local-info']['state'] == 'active':
+                    active_fw = fw2_ip
+                elif fw2_result['group']['peer-info']['state'] == 'active':
+                    active_fw = fw_ip
+                else:
+                    active_fw = None
+                    logger.error("HA State Unknown based on FW2")
+            elif fw2_result['enabled'] == 'no':
+                active_fw = fw2_ip
+        except Exception as e:
+            print(f"Error for FW2: {e}")
+            active_fw = None
+    logger.info(f"Active FW: {active_fw}")
+    return active_fw
+
+
 def fw_gp_ext(fw_ip, fw_key, ignore_cache: bool = False):
 
     global fw_data

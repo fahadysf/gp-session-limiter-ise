@@ -136,7 +136,9 @@ async def disconnected_event(request: Request, auth_result: str = Depends(check_
     global fw_api_key
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     data = await request.json()
-    gp_connected_user_data = pan_fw.fw_gp_ext(config['fw_ip'], fw_api_key)
+    fw_ip = pan_fw.get_active_fw(
+        config['fw_ip'], config['fw_ha_ip'], fw_api_key)
+    gp_connected_user_data = pan_fw.fw_gp_ext(fw_ip, fw_api_key)
     if data['InternalUser']['name'] in gp_connected_user_data.keys():
         if len(gp_connected_user_data[data['InternalUser']['name']]) > 0:
             sync_gp_session_state(config)
@@ -329,8 +331,10 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
     """
     global ise_token
     global fw_api_key
+    fw_ip = pan_fw.get_active_fw(
+        config['fw_ip'], config['fw_ha_ip'], fw_api_key)
     gp_connected_user_data = pan_fw.fw_gp_ext(
-        config['fw_ip'], fw_api_key, ignore_cache=initial)
+        fw_ip, fw_api_key, ignore_cache=initial)
     ise_gp_connected_users = []
     for user in cisco_ise.all_users:
         if 'customAttributes' in cisco_ise.all_users[user].keys():
@@ -391,7 +395,9 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
         else:
             u_dict = gp_connected_user_data[user][0]
             cache_user = cisco_ise.all_users[user]
-            if u_dict['Client-Hostname'] != cache_user['customAttributes']['PaloAlto-Client-Hostname'] or u_dict['Client-OS'] != cache_user['customAttributes']['PaloAlto-Client-OS'] or u_dict['Client-Source-IP'] != cache_user['customAttributes']['PaloAlto-Client-Source-IP']:
+            if u_dict['Client-Hostname'] != cache_user['customAttributes']['PaloAlto-Client-Hostname'] \
+                    or u_dict['Client-OS'] != cache_user['customAttributes']['PaloAlto-Client-OS'] \
+                    or u_dict['Client-Source-IP'] != cache_user['customAttributes']['PaloAlto-Client-Source-IP']:
                 custom_attributes = {
                     "PaloAlto-Client-Hostname": u_dict['Client-Hostname'],
                     "PaloAlto-Client-OS": u_dict['Client-OS'],
