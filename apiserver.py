@@ -261,9 +261,11 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
         logger.info(f"User {user['name']} synced with connected state on ISE")
         gpusers = sync_gp_session_state(config)
         attributes = data['InternalUser']['customAttributes']
-        duplicate_session = attributes['PaloAlto-Client-Hostname'].strip() != user['customAttributes']['PaloAlto-Client-Hostname'].strip() and \
+        duplicate_session = \
+            attributes['PaloAlto-Client-Hostname'].strip(
+            ) != user['customAttributes']['PaloAlto-Client-Hostname'].strip() or \
             attributes['PaloAlto-Client-OS'].strip(
-        ) != user['customAttributes']['PaloAlto-Client-OS'].strip()
+            ) != user['customAttributes']['PaloAlto-Client-OS'].strip()
         if duplicate_session and user['name'] in gpusers.keys():
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
