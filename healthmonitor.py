@@ -4,6 +4,8 @@ import ssl
 from urllib import request
 import paramiko
 import time
+import smtplib
+from email.mime.text import MIMEText
 
 # Disable SSL Verification
 ctx = ssl.create_default_context()
@@ -23,6 +25,24 @@ MIDDLEWARE_PORT = "8000"
 FW_DEVICE_NAMES = ["PAN-NGFW-VM-33"]
 ENFORCING_GROUP = "Device Type#All Device Types#PAN-NGFW-DevType"
 NON_ENFORCING_GROUP = "Device Type#All Device Types#PAN-NGFW-DevType#PAN-NGFW-Multi-GP-Allowed"
+
+EMAIL_FROM = "gptool-healthcheck@site.com"
+EMAIL_TO = "receiver@site.com"
+SMTP_SERVER = "127.0.0.1:25"
+
+
+def send_email(subject, body, email_from=EMAIL_FROM, email_to=EMAIL_TO, smtp_server=SMTP_SERVER):
+    """
+    This function sends an email.
+    """
+    msg = MIMEText(body)
+    msg['Subject'] = f"[ALERT] ISE API Unreachable - "
+    msg['From'] = email_from
+    msg['To'] = email_to
+
+    s = smtplib.SMTP(SMTP_SERVER)
+    s.sendmail(email_from, email_to, msg.as_string())
+    s.quit()
 
 
 def do_healthcheck(middleware_ip, middleware_port):
@@ -164,6 +184,8 @@ if __name__ == "__main__":
                 failure_level = check_status_fw_ssh(
                     FW_IP2, FW_USER, FW_PASS, FW_HEALTHCHECK_PROFILE)
             except Exception:
+                print(
+                    "Failed to check FW healthcheck. SSH connectoin couldn't be established.")
                 failure_level = 1
 
     if failure_level == 0:
@@ -188,3 +210,13 @@ if __name__ == "__main__":
         for device_name in FW_DEVICE_NAMES:
             print(
                 f"Please change the device group manually in ISE to {NON_ENFORCING_GROUP} for {device_name}")
+
+        email_subject = f"[ALERT] ISE API Unreachable - {ISE_IP}:{ISE_API_PORT}"
+        email_message = f"""The GPTool Healthcheck script has detected that the
+        Cisco ISE API at {ISE_IP}:{ISE_API_PORT} is unreachable from the middleware server.
+
+        Please manually disable session enforcement by changing the Device Groups
+        of the GP Gateway Firewalls."""
+        send_email(email_subject, email_message)
+
+    exit(failure_level)
