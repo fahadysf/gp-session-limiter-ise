@@ -190,7 +190,7 @@ async def get_users_ise(request: Request, auth_result: str = Depends(check_auth)
     logger.info(f"{request.client.host} - {request.method} - {request.url}")
     global ise_token
     global config
-    return cisco_ise.ise_get_all_users(config['ise_api_ip'], ise_token)
+    return cisco_ise.ise_get_all_users(cisco_ise.ise_get_pan_active(ise_token), ise_token)
 
 
 @ app.get('/debug/getcachedusers')
@@ -253,7 +253,7 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
     global config
     global ise_token
     user = cisco_ise.ise_enrich_user(
-        config['ise_api_ip'],
+        cisco_ise.ise_get_pan_active(ise_token),
         ise_token,
         username
     )
@@ -322,8 +322,9 @@ def update_user(user: str, custom_attributes: dict) -> dict:
     dict: A dictionary containing the user data after the update.
     """
     global ise_token
+
     res = cisco_ise.ise_update_user(
-        config['ise_api_ip'],
+        cisco_ise.ise_get_pan_active(ise_token),
         ise_token,
         user,
         custom_attributes
@@ -361,7 +362,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
         u_dict = gp_connected_user_data[user][0]
         if initial or (user not in ise_gp_connected_users):
             cache_user = cisco_ise.ise_enrich_user(
-                config['ise_api_ip'],
+                cisco_ise.ise_get_pan_active(ise_token),
                 ise_token,
                 user)
             if cache_user is None:
@@ -377,7 +378,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                 }
                 try:
                     cisco_ise.ise_update_user(
-                        config['ise_api_ip'],
+                        cisco_ise.ise_get_pan_active(ise_token),
                         ise_token,
                         u_dict['Username'],
                         custom_attributes=custom_attributes)
@@ -398,7 +399,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
             }
             try:
                 cisco_ise.ise_update_user(
-                    config['ise_api_ip'],
+                    cisco_ise.ise_get_pan_active(ise_token),
                     ise_token,
                     user,
                     custom_attributes=custom_attributes
@@ -423,7 +424,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                 }
                 try:
                     cisco_ise.ise_update_user(
-                        config['ise_api_ip'],
+                        cisco_ise.ise_get_pan_active(ise_token),
                         ise_token,
                         u_dict['Username'],
                         custom_attributes=custom_attributes)

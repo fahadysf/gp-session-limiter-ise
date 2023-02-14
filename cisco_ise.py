@@ -108,6 +108,68 @@ def ise_api_call(ise_ip: str, ise_auth: str, path: str,
     return result
 
 
+def ise_get_node_details(node_name: str, ise_ip: str, ise_auth: str) -> dict:
+    """Get the ISE node details.
+
+    Args:
+        ise_ip (str): _description_
+        ise_auth (str): _description_
+
+    Returns:
+        dict: _description_
+    """
+    api_path = f"/ers/config/node/name/{node_name}"
+    try:
+        response = ise_api_call(ise_ip, ise_auth, api_path)
+        logger.debug(f"ISE API: Node Details: {response.text}")
+    except Exception as e:
+        logger.error(f"Error occurred while trying API call for ISE {ise_ip}")
+        raise
+    return response.json()
+
+
+def ise_get_pan_active(ise_auth: str) -> str:
+    """
+    Get the primary / active PAN status.
+    """
+    global config
+    ise_ip = config['ise_api_ip']
+    ise_ha_ip = config['ise_api_ha_ip']
+    api_path = "/ers/config/node"
+    try:
+        response = ise_api_call(ise_ip, ise_auth, api_path)
+        nodes = response.json()['SearchResult']['resources']
+    except Exception as e:
+        logger.error(
+            f"ISE API: Connection Failure, ISE Unreachable on {ise_ip}. Error {e}. Trying other node")
+        try:
+            response = ise_api_call(ise_ha_ip, ise_auth, api_path)
+            nodes = response.json()['SearchResult']['resources']
+        except Exception as e:
+            logger.error(
+                f"ISE API: Connection Failure, ISE Unreachable on both {ise_ip} and {ise_ha_ip}. Error {e}")
+            raise
+        else:
+            working_ise_ip = ise_ha_ip
+    else:
+        working_ise_ip = ise_ip
+
+    # Now try to get the details of the nodes and return the active PAN IP
+    for node in nodes:
+        try:
+            ndata = ise_get_node_details(
+                node['name'], working_ise_ip, ise_auth)
+            if ndata['Node']['papNode'] and ndata['Node']['primaryPapNode']:
+                if ndata['Node']['ipAddress'] in [ise_ip, ise_ha_ip]:
+                    logger.info(
+                        f"ISE API: Active PAN IP: {ndata['Node']['ipAddress']}")
+                    return ndata['Node']['ipAddress']
+        except Exception as e:
+            logger.error(f"Couldn't get node details. Error {e}")
+            raise
+    return None
+
+
 def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
     """
     Retrieves all users (InternalUsers) on ISE.
