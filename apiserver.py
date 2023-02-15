@@ -18,20 +18,22 @@ init_logging()
 # Setup Security
 security = HTTPBasic()
 
-# Setup CSV Logging
+# Setup tsv Logging
 
 
-def csv_log(csv_dir="./logs"):
-    csv_fname = f'{datetime.datetime.now().strftime("%Y-%m-%d.gp-dup-sessions.csv")}'
-    csv_path = os.path.join(csv_dir, csv_fname)
-    csv_header = "sn,username,date,time,connected-hostname,connected-os,connected-public-ip," \
-                 "denied-session-hostname,denied-session-os,denied-session-public-ip\n"
-    if not os.path.exists(csv_dir):
-        os.makedirs(csv_dir)
-    if not os.path.isfile(csv_path):
-        with open(csv_path, "a+") as csv_file:
-            csv_file.write(csv_header)
-    return csv_path
+def tsv_log(tsv_dir="./logs"):
+    tsv_fname = f'{datetime.datetime.now().strftime("%Y-%m-%d.gp-dup-sessions.tsv")}'
+    tsv_path = os.path.join(tsv_dir, tsv_fname)
+    tsv_header = "\t".join([
+        "sn", "username", "date", "time",
+        "connected-hostname", "connected-os", "connected-public-ip", "connected-region",
+        "denied-session-hostname", "denied-session-os", "denied-session-public-ip", "denied-session-region"]) + "\n"
+    if not os.path.exists(tsv_dir):
+        os.makedirs(tsv_dir)
+    if not os.path.isfile(tsv_path):
+        with open(tsv_path, "a+") as tsv_file:
+            tsv_file.write(tsv_header)
+    return tsv_path
 
 
 config = get_config()
@@ -269,24 +271,33 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
         if duplicate_session and user['name'] in gpusers.keys():
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
-            csvlogfile = csv_log()
+            tsvlogfile = tsv_log()
             eventdate = datetime.datetime.now().strftime("%b.%d.%Y")
             eventtime = datetime.datetime.now().strftime("%H:%M:%S")
             oldsession = user['customAttributes']
             oldsession['PaloAlto-Client-Region'] = gpusers[user['name']
                                                            ][0]['Raw-Data']['source-region']
-            csv_entry = f'{datetime.datetime.now().strftime("%Y%m%d%H%M%S")},' \
-                + f'{user["name"]},' \
-                + f'{eventdate},' \
-                + f'{eventtime},' \
-                + f'{oldsession["PaloAlto-Client-Hostname"]},' \
-                + f'{oldsession["PaloAlto-Client-OS"]},' \
-                + f'{oldsession["PaloAlto-Client-Source-IP"]},' \
-                + f'{oldsession["PaloAlto-Client-Region"]},' \
-                + f'{attributes["PaloAlto-Client-Hostname"]},' \
-                + f'{attributes["PaloAlto-Client-OS"]},' \
-                + f'{attributes["PaloAlto-Client-Source-IP"]},' \
-                + f'{attributes["PaloAlto-Client-Region"]}'
+            """
+            tsv_header = "\t".join([
+            "sn", "username", "date", "time",
+            "connected-hostname", "connected-os", "connected-public-ip", "connected-region",
+            "denied-session-hostname", "denied-session-os", "denied-session-public-ip", "denied-session-region"]) + "\n"
+            """
+            tsv_entry = "\t".join([
+                datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
+                user["name"],
+                eventdate,
+                eventtime,
+                oldsession["PaloAlto-Client-Hostname"],
+                oldsession["PaloAlto-Client-OS"],
+                oldsession["PaloAlto-Client-Source-IP"],
+                oldsession["PaloAlto-Client-Region"],
+                attributes["PaloAlto-Client-Hostname"],
+                attributes["PaloAlto-Client-OS"],
+                attributes["PaloAlto-Client-Source-IP"],
+                attributes["PaloAlto-Client-Region"],
+            ])
+
             if config['email_enabled']:
                 mailsender.send_mail(
                     config['smtp_server'],
@@ -305,8 +316,8 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
                     }),
                     mail_srv_typ=config['smtp_type']
                 )
-            with open(csvlogfile, "a+") as csv_file:
-                csv_file.write(csv_entry + "\n")
+            with open(tsvlogfile, "a+") as tsv_file:
+                tsv_file.write(tsv_entry + "\n")
     return user
 
 
