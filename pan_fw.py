@@ -118,7 +118,7 @@ def fw_gp_ext(fw_ip, fw_key, ignore_cache: bool = False):
                     result["entry"] = [result["entry"]]
                 for _ in result["entry"]:
                     user = dict()
-                    user["Username"] = _["username"]
+                    user["Username"] = _["username"].lower()
                     user["Client-Hostname"] = _["computer"]
                     user["Client-OS"] = _["client"]
                     user["Client-Source-IP"] = _["client-ip"]

@@ -208,11 +208,11 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
                 users_ext = response.json()["SearchResult"]["resources"]
                 logger.debug(f"Users Retrieved on page: {len(users_ext)}")
                 for _ in users_ext:
-                    if _['name'] in all_users:
+                    if _['name'].lower() in all_users:
                         for k in _:
-                            all_users[_['name']][k] = _[k]
+                            all_users[_['name'].lower()][k] = _[k]
                     else:
-                        all_users[_['name']] = _
+                        all_users[_['name'].lower()] = _
                 if 'nextPage' in response.json()["SearchResult"]:
                     next_url = response.json(
                     )["SearchResult"]['nextPage']['href']
@@ -224,7 +224,7 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
     return all_users
 
 
-def ise_get_user_details(ise_ip, ise_auth, user):
+def ise_get_user_details(ise_ip: str, ise_auth: str, user: dict):
     """
     Retrieves the details of a specific user from the ISE server.
 
@@ -243,25 +243,27 @@ def ise_get_user_details(ise_ip, ise_auth, user):
         logger.debug(
             f"User Details: {json.dumps(user, indent=2, sort_keys=True)}")
         raise
-    if user['name'] in all_users:
-        data = all_users[user['name']]
+    if user['name'].lower() in all_users:
+        username = user['name'].lower()
+        data = all_users[username]
         # If cache is fresh, return cached data
         if 'customAttributes' in data and 'timestamp' in data and data['timestamp'] > time.time() - config['ise_cache_ttl']:
             logger.info(
-                f"Cisco ISE Data Cache Hit for user {user['name']} with data freshness {(time.time() - data['timestamp']):.2f}s")
-            data = all_users[user['name']]
+                f"Cisco ISE Data Cache Hit for user {user['name'].lower()} with data freshness {(time.time() - data['timestamp']):.2f}s")
+            data = all_users[username]
         else:
             # If cache is stale or user details are not known, retrieve from ISE
             logger.warning(
-                f"Cisco ISE Data Cache Miss for user {user['name']}")
-            if user['name'] in all_users:
+                f"Cisco ISE Data Cache Miss for user {username}")
+            if username in all_users:
                 logger.debug(
-                    f"User Details: {json.dumps(all_users[user['name']], indent=2, sort_keys=True)}")
+                    f"User Details: {json.dumps(all_users[username], indent=2, sort_keys=True)}")
             else:
-                logger.debug(f"User Details for {user} not found in cache.")
+                logger.debug(
+                    f"User Details for {username} not found in cache.")
             try:
                 logger.debug(
-                    f"Cisco ISE API: Request ISE User {user['name']} Details, ISE {ise_ip}")
+                    f"Cisco ISE API: Request ISE User {username} Details, ISE {ise_ip}")
                 response = ise_api_call(ise_ip, ise_auth, api_path)
             except Exception:
                 logger.error(
@@ -270,7 +272,7 @@ def ise_get_user_details(ise_ip, ise_auth, user):
                     f"Response: {response.text}, Status Code: {response.status_code}")
             else:
                 logger.info(
-                    f"Cisco ISE API: User {user['name']} Details Retrieved, ISE {ise_ip}")
+                    f"Cisco ISE API: User {username} Details Retrieved, ISE {ise_ip}")
             data = response.json()['InternalUser']
             data['timestamp'] = time.time()
     return data
@@ -278,6 +280,7 @@ def ise_get_user_details(ise_ip, ise_auth, user):
 
 def ise_enrich_user(ise_ip: str, ise_auth: str, username: str) -> dict:
     global all_users
+    username = username.lower()
     try:
         if username in all_users:
             logger.debug(f"User {username} found in cache.")
@@ -321,6 +324,7 @@ def ise_update_user(ise_ip: str,
     - res: The result of the API call.
     """
     # Enrich user details (if not already done) and get user
+    username = username.lower()
     u = ise_enrich_user(ise_ip, ise_auth, username)
     if u is None:
         logger.error(
@@ -347,7 +351,7 @@ def ise_update_user(ise_ip: str,
                 f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
             traceback.print_exc()
         else:
-            all_users[u['name']]['customAttributes'] = custom_attributes
+            all_users[u['name'].lower()]['customAttributes'] = custom_attributes
             save_user_data()
             logger.debug(
                 f"Status Code: {res.status_code}, Response Body: {json.dumps(res.json(), indent=2)}")

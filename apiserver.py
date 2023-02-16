@@ -257,7 +257,7 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
     user = cisco_ise.ise_enrich_user(
         cisco_ise.ise_get_pan_active(ise_token),
         ise_token,
-        username
+        username.lower()
     )
     if user and '.' in user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
         logger.info(f"User {user['name']} synced with connected state on ISE")
@@ -366,16 +366,16 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
         fw_ip, fw_api_key, ignore_cache=initial)
     ise_gp_connected_users = []
     for user in cisco_ise.all_users:
-        if 'customAttributes' in cisco_ise.all_users[user].keys():
-            if '.' in cisco_ise.all_users[user]['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
-                ise_gp_connected_users.append(user)
-    for user in gp_connected_user_data:
-        u_dict = gp_connected_user_data[user][0]
-        if initial or (user not in ise_gp_connected_users):
+        if 'customAttributes' in cisco_ise.all_users[user.lower()].keys():
+            if '.' in cisco_ise.all_users[user.lower()]['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
+                ise_gp_connected_users.append(user.lower())
+    for user in [u.lower() for u in gp_connected_user_data]:
+        u_dict = gp_connected_user_data[user.lower()][0]
+        if initial or (user.lower() not in ise_gp_connected_users):
             cache_user = cisco_ise.ise_enrich_user(
                 cisco_ise.ise_get_pan_active(ise_token),
                 ise_token,
-                user)
+                user.lower())
             if cache_user is None:
                 logger.error(
                     'ISE user details not found. Please ensure ISE connectivity and check credentials')
