@@ -19,6 +19,7 @@ init_logging()
 requests.packages.urllib3.disable_warnings()
 
 # Globally cached lists (all_users, all_groups)
+all_users_last_updated = 0
 
 
 def load_user_data():
@@ -182,13 +183,17 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
     - all_users: A dictionary containing all of the users on the ISE server.
     """
     global all_users
+    global all_users_last_updated
     api_path = f"/ers/config/internaluser?size=100&page=1"
+    if all_users_last_updated > time.time() - config['ise_all_user_refresh_ttl']:
+        logger.warning(
+            f"Cisco ISE API: Userlist already fresh. Not requesting from ISE {ise_ip}")
+        return all_users
     continue_flag = True
+    logger.info(f"Cisco ISE API: Request All ISE Users, ISE {ise_ip}")
     while continue_flag:
         for _ in range(3):
             try:
-                logger.info(
-                    f"Cisco ISE API: Request All ISE Users, ISE {ise_ip}")
                 response = ise_api_call(ise_ip, ise_auth, api_path)
             except Exception as e:
                 logger.error(
@@ -221,6 +226,7 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
                 else:
                     logger.debug(f"All Users Count: {len(all_users.keys())}")
                     continue_flag = False
+    all_users_last_updated = time.time()
     return all_users
 
 
@@ -427,4 +433,3 @@ def ise_set_device_details(ise_ip: str, ise_auth: str, devicedata: dict) -> dict
 
 
 all_users = load_user_data()
-# all_devices = ise_get_all_devices(config['ise_api_ip'], config['ise_credentials']['token'])

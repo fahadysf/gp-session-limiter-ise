@@ -254,6 +254,13 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
         return
     global config
     global ise_token
+    global fw_api_key
+    fw_ip = pan_fw.get_active_fw(
+        config['fw_ip'], config['fw_ha_ip'], fw_api_key)
+    if fw_ip is None:
+        logger.error(
+            "No active firewall found. Check firewall HA status and API key.")
+        raise Exception("No active and reachable firewall found.")
     user = cisco_ise.ise_enrich_user(
         cisco_ise.ise_get_pan_active(ise_token),
         ise_token,
@@ -261,7 +268,7 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
     )
     if user and '.' in user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
         logger.info(f"User {user['name']} synced with connected state on ISE")
-        gpusers = sync_gp_session_state(config)
+        gpusers = pan_fw.fw_gp_ext(fw_ip, fw_api_key, ignore_cache=True)
         attributes = data['InternalUser']['customAttributes']
         duplicate_session = \
             attributes['PaloAlto-Client-Hostname'].strip(
@@ -379,8 +386,7 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
             if cache_user is None:
                 logger.error(
                     'ISE user details not found. Please ensure ISE connectivity and check credentials')
-                return None
-            if '.' not in cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
+            elif '.' not in cache_user['customAttributes']['PaloAlto-GlobalProtect-Client-Version']:
                 custom_attributes = {
                     "PaloAlto-Client-Hostname": u_dict['Client-Hostname'],
                     "PaloAlto-Client-OS": u_dict['Client-OS'],
@@ -417,14 +423,15 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
                 )
             except Exception:
                 logger.error(f"Error updating user {user} on ISE")
-                raise
             else:
                 logger.warning(
                     f"Updated user {user} on ISE to GP Non-connected state")
         else:
             u_dict = gp_connected_user_data[user][0]
             cache_user = cisco_ise.all_users[user]
-            if u_dict['Client-Hostname'] != cache_user['customAttributes']['PaloAlto-Client-Hostname'] \
+            if cache_user is None:
+                logger.warning(f"User {user} not found in ISE Users. Skipping update of attributes.")
+            elif u_dict['Client-Hostname'] != cache_user['customAttributes']['PaloAlto-Client-Hostname'] \
                     or u_dict['Client-OS'] != cache_user['customAttributes']['PaloAlto-Client-OS'] \
                     or u_dict['Client-Source-IP'] != cache_user['customAttributes']['PaloAlto-Client-Source-IP']:
                 custom_attributes = {

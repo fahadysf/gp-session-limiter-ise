@@ -20,7 +20,8 @@ ise_credentials:
   token: 
 
 # TTL for User Detailed Record Cache
-ise_cache_ttl: 60
+ise_cache_ttl: 60             # Per User Data / Attribute cache freshness TTL
+ise_all_user_refresh_ttl: 300 # Full Userlist refresh TTL
 
 # Email Notification Settings
 email_enabled:  0 # Set 1 to enable
