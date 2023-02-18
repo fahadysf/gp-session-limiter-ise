@@ -179,9 +179,10 @@ def ise_get_pan_active(ise_auth: str) -> str:
                         logger.info(
                             f"ISE API: Active PAN IP: {ndata['Node']['ipAddress']}")
                         ise_active = ndata['Node']['ipAddress']
+                        ha_device_last_update = time.time()
+                        return ise_active
             except Exception as e:
                 logger.error(f"Couldn't get node details. Error {e}")
-        ha_device_last_update = time.time()
         return ise_active
 
 
