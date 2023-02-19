@@ -131,9 +131,10 @@ def fw_gp_ext(fw_ip, fw_key, ignore_cache: bool = False):
                     f"PAN-OS API: NO Users Connected to GP-Gateway, Firewall {fw_ip}")
             for entry in gp_users:
                 if entry['Username'] in gp_connected_user_data.keys():
-                    gp_connected_user_data[entry['Username']].append(entry)
+                    gp_connected_user_data[entry['Username'].lower()].append(
+                        entry)
                 else:
-                    gp_connected_user_data[entry['Username']] = [entry]
+                    gp_connected_user_data[entry['Username'].lower()] = [entry]
             fw_data["fw_gp_sessions"] = gp_connected_user_data
             fw_data["fw_gp_sessions_timestamp"] = time.time()
             save_fw_cache()

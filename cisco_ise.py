@@ -295,6 +295,7 @@ def ise_get_user_details(ise_ip: str, ise_auth: str, user: dict):
                 logger.info(
                     f"Cisco ISE API: User {username} Details Retrieved, ISE {ise_ip}")
             data = response.json()['InternalUser']
+            data['name'] = data['name'].lower()
             data['timestamp'] = time.time()
     return data
 

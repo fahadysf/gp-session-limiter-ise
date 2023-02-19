@@ -275,14 +275,14 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
             ) != user['customAttributes']['PaloAlto-Client-Hostname'].strip() or \
             attributes['PaloAlto-Client-OS'].strip(
             ) != user['customAttributes']['PaloAlto-Client-OS'].strip()
-        if duplicate_session and user['name'] in gpusers.keys():
+        if duplicate_session and user['name'].lower() in [k.lower() for k in gpusers.keys()]:
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
             tsvlogfile = tsv_log()
             eventdate = datetime.datetime.now().strftime("%b.%d.%Y")
             eventtime = datetime.datetime.now().strftime("%H:%M:%S")
             oldsession = user['customAttributes']
-            oldsession['PaloAlto-Client-Region'] = gpusers[user['name']
+            oldsession['PaloAlto-Client-Region'] = gpusers[user['name'].lower()
                                                            ][0]['Raw-Data']['source-region']
             """
             tsv_header = "\t".join([
@@ -292,7 +292,7 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
             """
             tsv_entry = "\t".join([
                 datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
-                user["name"],
+                user["name"].lower(),
                 eventdate,
                 eventtime,
                 oldsession["PaloAlto-Client-Hostname"],
@@ -313,9 +313,9 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
                     config['mail_to'],
                     config['mail_password'],
                     config['smtp_port'],
-                    f"GP Duplicate Loging Attempt - User: {user['name']}",
+                    f"GP Duplicate Loging Attempt - User: {user['name'].lower()}",
                     mailsender.mail_html_body({
-                        'username': user['name'],
+                        'username': user['name'].lower(),
                         'date': eventdate,
                         'time': eventtime,
                         'oldsession': user['customAttributes'],
@@ -430,7 +430,8 @@ def sync_gp_session_state(config: dict, initial: bool = False) -> dict:
             u_dict = gp_connected_user_data[user][0]
             cache_user = cisco_ise.all_users[user]
             if cache_user is None:
-                logger.warning(f"User {user} not found in ISE Users. Skipping update of attributes.")
+                logger.warning(
+                    f"User {user} not found in ISE Users. Skipping update of attributes.")
             elif u_dict['Client-Hostname'] != cache_user['customAttributes']['PaloAlto-Client-Hostname'] \
                     or u_dict['Client-OS'] != cache_user['customAttributes']['PaloAlto-Client-OS'] \
                     or u_dict['Client-Source-IP'] != cache_user['customAttributes']['PaloAlto-Client-Source-IP']:
