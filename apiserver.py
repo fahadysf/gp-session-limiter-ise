@@ -152,8 +152,8 @@ async def disconnected_event(request: Request, auth_result: str = Depends(check_
             headers={"WWW-Authenticate": "Basic"},
         )
     gp_connected_user_data = pan_fw.fw_gp_ext(fw_ip, fw_api_key)
-    if data['InternalUser']['name'] in gp_connected_user_data.keys():
-        if len(gp_connected_user_data[data['InternalUser']['name']]) > 0:
+    if data['InternalUser']['name'].lower() in [k.lower() for k in gp_connected_user_data.keys()]:
+        if len(gp_connected_user_data[data['InternalUser']['name'].lower()]) > 0:
             sync_gp_session_state(config)
             logger.warning(
                 f"User {data['InternalUser']['name']} updated with existing session data on ISE.")
@@ -325,6 +325,26 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
                 )
             with open(tsvlogfile, "a+") as tsv_file:
                 tsv_file.write(tsv_entry + "\n")
+        else:
+            custom_attributes = {
+                "PaloAlto-Client-Hostname": '',
+                "PaloAlto-Client-OS": '',
+                "PaloAlto-Client-Source-IP": '',
+                "PaloAlto-GlobalProtect-Client-Version": 'N-A'
+            }
+            try:
+                cisco_ise.ise_update_user(
+                    cisco_ise.ise_get_pan_active(ise_token),
+                    ise_token,
+                    user['name'].lower(),
+                    custom_attributes=custom_attributes
+                )
+            except Exception:
+                logger.error(f"Error updating user {user['name']} on ISE")
+                raise
+            else:
+                logger.warning(
+                    f"Updated user {user['name']} on ISE to GP Non-connected state")
     return user
 
 
