@@ -132,7 +132,12 @@ async def connected_event(request: Request, auth_result: bool = Depends(check_au
         logger.debug(f"Request: {await request.body()}")
         return
     logger.debug(f"POST Data: {json.dumps(data, indent=2)}")
-    return res.json()
+    try:
+        return res.json()
+    except AttributeError:
+        return {"message": "User not found in ISE. Skipping update."}
+    except Exception as e:
+        return {f"message": "Unknown error occurred. Error: {e}"}
 
 
 @ app.post("/disconnected")
@@ -171,10 +176,14 @@ async def disconnected_event(request: Request, auth_result: str = Depends(check_
                 "PaloAlto-Client-Source-IP": "",
                 "PaloAlto-GlobalProtect-Client-Version": "N-A"
             })
-
-    logger.warning(
-        f"User {data['InternalUser']['name']} disconnected from GP. Attributes updated in ISE.")
-    return res.json()
+    try:
+        logger.warning(
+            f"User {data['InternalUser']['name']} disconnected from GP. Updating attributes in ISE.")
+        return res.json()
+    except AttributeError:
+        return {"message": f"User {data['InternalUser']['name']} not found in ISE. Skipping update."}
+    except Exception as e:
+        return {f"message": "Unknown error occurred. Error: {e}"}
 
 
 @ app.get('/debug/getusersfromise')

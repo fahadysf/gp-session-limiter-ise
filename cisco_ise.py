@@ -93,7 +93,7 @@ def ise_api_call(ise_ip: str, ise_auth: str, path: str,
                 headers=api_headers,
                 verify=False,
                 data=payload,
-                timeout=3
+                timeout=5
             )
         else:
             result = requests.request(
@@ -101,14 +101,13 @@ def ise_api_call(ise_ip: str, ise_auth: str, path: str,
                 url=api_url,
                 headers=api_headers,
                 verify=False,
-                timeout=3
+                timeout=5
             )
-
     except Exception:
         logger.error(f"Error occurred while trying API call for ISE {ise_ip}")
-        traceback.print_exc()
         return None
-    return result
+    else:
+        return result
 
 
 def ise_get_node_details(node_name: str, ise_ip: str, ise_auth: str) -> dict:
@@ -213,7 +212,7 @@ def ise_get_all_users(ise_ip: str, ise_auth: str) -> dict:
             except Exception as e:
                 logger.error(
                     f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred")
-                traceback.print_exc()
+                logger.debug(traceback.format_exc())
                 time.sleep(1)
             else:
                 if response.status_code == 401:
@@ -371,7 +370,7 @@ def ise_update_user(ise_ip: str,
         except Exception:
             logger.error(
                 f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred.")
-            traceback.print_exc()
+            logger.debug(traceback.format_exc())
         else:
             all_users[u['name'].lower()]['customAttributes'] = custom_attributes
             save_user_data()
@@ -403,7 +402,7 @@ def ise_get_all_devices(ise_ip: str, ise_auth: str) -> list:
                 response = ise_api_call(ise_ip, ise_auth, api_path)
             except Exception as e:
                 logger.error(
-                    f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred")
+                    f"Cisco ISE API: Connection Failure, ISE {ise_ip} Unreachable or error occurred. Error: {e}")
                 logger.debug(traceback.format_exc())
                 time.sleep(1)
             else:
