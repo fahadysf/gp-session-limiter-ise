@@ -22,7 +22,16 @@ security = HTTPBasic()
 
 
 def tsv_log(tsv_dir="./logs"):
-    tsv_fname = f'{datetime.datetime.now().strftime("%Y-%m-%d.gp-dup-sessions.tsv")}'
+    """Generats a monthly tsv file path for logging GP session state.
+    Creates the file if it does not exist so it should be used with append mode.
+
+    Args:
+        tsv_dir (str, optional): Directory to save tsv files to. Defaults to "./logs".
+
+    Returns:
+        str: File path to the tsv file.
+    """
+    tsv_fname = f'{datetime.datetime.now().strftime("%Y-%m.gp-dup-sessions.tsv")}'
     tsv_path = os.path.join(tsv_dir, tsv_fname)
     tsv_header = "\t".join([
         "sn", "username", "date", "time",
@@ -268,8 +277,7 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
         config['fw_ip'], config['fw_ha_ip'], fw_api_key)
     if fw_ip is None:
         logger.error(
-            "No active firewall found. Check firewall HA status and API key.")
-        raise Exception("No active and reachable firewall found.")
+            "No active and reachable firewall found. Check firewall connectivity, HA status and API key.")
     user = cisco_ise.ise_enrich_user(
         cisco_ise.ise_get_pan_active(ise_token),
         ise_token,
