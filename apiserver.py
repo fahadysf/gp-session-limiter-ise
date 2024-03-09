@@ -288,10 +288,10 @@ async def sync_user_request(username: str, request: Request, auth_result: str = 
         gpusers = pan_fw.fw_gp_ext(fw_ip, fw_api_key, ignore_cache=True)
         attributes = data['InternalUser']['customAttributes']
         duplicate_session = \
-            attributes['PaloAlto-Client-Hostname'].strip(
-            ) != user['customAttributes']['PaloAlto-Client-Hostname'].strip() or \
-            attributes['PaloAlto-Client-OS'].strip(
-            ) != user['customAttributes']['PaloAlto-Client-OS'].strip()
+            attributes['PaloAlto-Client-Hostname'].lower().strip(
+            ) != user['customAttributes']['PaloAlto-Client-Hostname'].lower().strip() #and \
+            #attributes['PaloAlto-Client-OS'].strip(
+            #) != user['customAttributes']['PaloAlto-Client-OS'].strip()
         if duplicate_session and user['name'].lower() in [k.lower() for k in gpusers.keys()]:
             logger.warning(
                 f"User {user['name']} tried login with new location while already connected. New attempt parameters {attributes}")
